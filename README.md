@@ -23,12 +23,11 @@ chmod +x setup-deps.sh
 As dependências são instaladas automaticamente pelo `setup-deps.sh`.
 
 ### Dependências Específicas
-- ❌ `webkit2gtk4.1-devel` (remover — versão antiga)
-- ❌ `libappindicator-gtk3-devel` (remover — indicador legado)
-- ✅ `webkitgtk6.0-devel` (instalar — WebKit moderno)
-- ✅ `libadwaita-devel` (instalar — UI GTK4 moderna)
+- ✅ `webkit2gtk4.1-devel` (instalar — WebKit)
+- ✅ `libappindicator-gtk3-devel` (instalar — UI GTK legado)
 
 ---
+
 
 ## 🌐🌐🌐Iniciar o motor de execução
 
