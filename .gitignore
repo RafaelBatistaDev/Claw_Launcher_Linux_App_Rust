@@ -1,0 +1,21 @@
+# Rust
+/target/
+Cargo.lock
+**/*.rs.bk
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Tauri
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# Build
+*.o
+*.a
+*.so

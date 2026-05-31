@@ -1,0 +1,21 @@
+{
+  "productName": "claw-launcher",
+  "version": "0.1.0",
+  "identifier": "br.dev.recifecrypto.claw-launcher",
+  "build": {
+    "beforeBuildCommand": "",
+    "beforeDevCommand": "",
+    "devUrl": null,
+    "frontendDist": "src"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": ["rpm"]
+  }
+}
