@@ -8,6 +8,24 @@ cd ./Claw_Launcher_Linux_App_Rust-main
 chmod +x *.sh
 ./create_app.sh build      # Menu interativo (configura e valida deps automaticamente)
 ```
+
+# 1. Instalar sccache
+cargo install sccache --locked
+
+# 2. Confirmar
+which sccache
+
+# 3.
+mkdir -p ~/.cargo && cat > ~/.cargo/config.toml << 'EOF'
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[build]
+rustc-wrapper = "sccache"
+EOF
+
+
 ```bash
 # Kill any cargo or rustc processes running in the background
 pkill -9 cargo

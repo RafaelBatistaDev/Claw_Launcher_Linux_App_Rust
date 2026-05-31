@@ -29,7 +29,14 @@ main() {
     # Verifica Rust
     if ! command -v cargo &>/dev/null; then
         error "cargo não encontrado. Instale Rust via rustup."
-        return 1
+        exit 1
+    fi
+
+    # Informa se sccache está ativo
+    if command -v sccache &>/dev/null; then
+        step "sccache ativo: $(sccache --version)"
+    else
+        warn "sccache não encontrado — build sem cache."
     fi
 
     step "Versão do Rust:"
@@ -37,12 +44,12 @@ main() {
     cargo --version
 
     # Clean (opcional)
-    # step "Limpando build anterior..."
-    # cargo clean
+    step "Limpando build anterior..."
+    cd "$PROJECT_DIR"
+    cargo clean
 
     # Build release
     step "Compilando claw-launcher em release..."
-    cd "$PROJECT_DIR"
     cargo build --release
 
     # Verifica se o binário foi criado
@@ -53,7 +60,7 @@ main() {
         ls -lh "$BINARY_PATH"
     else
         error "Binário não encontrado: $BINARY_PATH"
-        return 1
+        exit 1
     fi
 
     success "═══ Build finalizado com sucesso! ═══"
