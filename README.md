@@ -5,6 +5,8 @@ sudo rpm-ostree upgrade
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.cargo/env
 
+./build.sh
+
 **Claw Launcher** é um motor de execução de WebApps de alto desempenho, desenvolvido em **Rust** com **Tauri 2.0**. Ele foi projetado especificamente para sistemas Linux modernos (como Fedora Kinoite/Silverblue), oferecendo uma experiência nativa para aplicações web com isolamento total de dados e gerenciamento eficiente de recursos.
 <p align="center">
    <img src="PNG/1.png" width="100%" />

@@ -202,8 +202,8 @@ def limpar_ambiente_repositorio(repo_path: Path) -> None:
     """
     log("Limpando ambiente do repositório local...")
 
-    # 1. Remover instâncias de aplicações locais (instance_Claw_*)
-    for inst_dir in repo_path.glob("instance_Claw_*"):
+    # 1. Remover instâncias de aplicações locais (instance_*)
+    for inst_dir in repo_path.glob("instance_*"):
         remove_path(inst_dir)
 
     # 2. Remover diretório target/ (build cache e arquivos de compilação antigos)
@@ -239,10 +239,21 @@ def main() -> None:
     # Obter caminho do repositório (diretório pai deste script)
     repo_path = Path(__file__).resolve().parent
 
+    # Ler repositório ativo configurado antes de deletar a pasta de configuração
+    active_repo = None
+    repo_config = USER_HOME / ".config" / "claw-launcher" / "repo_path.txt"
+    if repo_config.exists():
+        try:
+            path_str = repo_config.read_text().strip()
+            if path_str:
+                active_repo = Path(path_str)
+        except Exception as e:
+            debug(f"Erro ao ler repo_path.txt: {e}")
+
     # 1. Desinstalar tudo do sistema (purga completa)
     purgar_arquivos_sistema()
 
-    # 2. Limpar ambiente do repositório (deletar build target/ e instâncias)
+    # 2. Limpar ambiente do repositório atual (onde o script está localizado)
     limpar_ambiente_repositorio(repo_path)
 
     success("═══ Purga e Limpeza Concluídas com Sucesso! ═══")

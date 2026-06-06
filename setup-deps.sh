@@ -3,7 +3,8 @@
 # Script        : setup-deps.sh
 # Descrição     : Configura dependências do sistema para WebKit4.1 + GTK3
 # Autor         : Rafael Batista
-# Versão        : 1.2.0 (Remove rust/gcc do layer; adiciona guards de GPG e transação)
+# Versão        : 1.4.0 (Instala rustup automaticamente se não detectado)
+# Uso           : ./setup-deps.sh [install|remove]  (padrão: install)
 # ──────────────────────────────────────────────────────────────────────────────
 
 # set -e removido temporariamente no escopo global para evitar quebras silenciosas
@@ -17,6 +18,91 @@ success() { echo -e "${G}[OK]${N}      $*"; }
 warn()    { echo -e "${Y}[AVISO]${N}   $*"; }
 error()   { echo -e "${R}[ERRO]${N}    $*" >&2; }
 step()    { echo -e "${C}[→]${N}       $*"; }
+
+# ── Pacotes de Dependências (compartilhado entre install e remove) ────────────
+# rust/cargo/rust-src/rustfmt/clippy excluídos do host rpm-ostree:
+# puxam rust-std-static → glibc-devel → conflito de glibc no depsolve.
+# gcc excluído pelo mesmo motivo. Instale via rustup após reboot.
+PACOTES_RPM_OSTREE=(
+    webkit2gtk4.1-devel
+    javascriptcoregtk4.1-devel      # javascriptcoregtk-4.1 >= 2.38 (requerido pelo crate)
+    libappindicator-gtk3-devel
+    libadwaita-devel
+    libsoup-devel
+    librsvg2-devel
+    gtk3-devel
+    glib2-devel
+    gobject-introspection-devel
+    libxcb-devel
+    openssl-devel
+    make
+    lld                             # linker LLVM — até 4x mais rápido que bfd
+    clang                           # necessário para usar lld via -fuse-ld=lld
+)
+
+PACOTES_DNF=(
+    webkit2gtk4.1-devel
+    javascriptcoregtk4.1-devel
+    libappindicator-gtk3-devel
+    libadwaita-devel
+    libsoup-devel
+    librsvg2-devel
+    gtk3-devel
+    glib2-devel
+    gobject-introspection-devel
+    libxcb-devel
+    openssl-devel
+    rust cargo
+    rust-src
+    rustfmt
+    clippy
+    gcc
+    make
+    lld clang
+)
+
+# ── Instalação de Rust via rustup ────────────────────────────────────────────
+install_rustup() {
+    step "Verificando instalação do Rust/rustup..."
+
+    # Carrega env do cargo caso já exista mas não esteja no PATH atual
+    local cargo_env="$HOME/.cargo/env"
+    # shellcheck source=/dev/null
+    [ -f "$cargo_env" ] && source "$cargo_env"
+
+    if command -v rustup &>/dev/null; then
+        success "rustup já instalado: $(rustup --version 2>&1)"
+        log "Atualizando toolchain stable..."
+        rustup update stable
+        rustup component add rust-src rustfmt clippy
+        success "Toolchain Rust atualizado."
+        return 0
+    fi
+
+    log "rustup não encontrado. Instalando via script oficial..."
+
+    if ! command -v curl &>/dev/null; then
+        error "curl não encontrado — necessário para instalar rustup."
+        error "Instale curl e execute novamente."
+        exit 1
+    fi
+
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+        --default-toolchain stable \
+        --component rust-src rustfmt clippy
+
+    # Ativa o env na sessão atual
+    # shellcheck source=/dev/null
+    source "$HOME/.cargo/env"
+
+    if command -v rustup &>/dev/null; then
+        success "Rust instalado com sucesso: $(rustc --version)"
+        success "Cargo: $(cargo --version)"
+    else
+        error "Instalação do rustup falhou — verifique a conexão e tente novamente."
+        exit 1
+    fi
+}
 
 # ── Detecção de Ambiente ──────────────────────────────────────────────────────
 detect_package_manager() {
@@ -40,20 +126,7 @@ detect_package_manager() {
 setup_fedora_rpm_ostree() {
     log "═══ Iniciando Layering de Dependências via rpm-ostree ═══"
 
-    # rust/cargo/gcc removidos: puxam rust-std-static → glibc-devel → conflito
-    # de glibc no depsolve do rpm-ostree. Rust é instalado via rustup após reboot.
-    local pacotes=(
-        webkit2gtk4.1-devel
-        libappindicator-gtk3-devel
-        libsoup-devel
-        gtk3-devel
-        glib2-devel
-        gobject-introspection-devel
-        libxcb-devel
-        openssl-devel
-        lld
-        clang
-    )
+    local pacotes=("${PACOTES_RPM_OSTREE[@]}")
 
     step "Verificando transação rpm-ostree em andamento..."
     if rpm-ostree status 2>&1 | grep -q "Transaction in progress"; then
@@ -97,9 +170,8 @@ setup_fedora_rpm_ostree() {
         warn "é obrigatório reiniciar a máquina."
         warn "Execute: sudo systemctl reboot"
         echo ""
-        log "Após o reboot, instale Rust via rustup (não via rpm-ostree):"
-        log "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-        log "  source \"\$HOME/.cargo/env\""
+        # rustup instala em $HOME/.cargo — não depende do reboot do rpm-ostree
+        install_rustup
     else
         error "Falha ao aplicar pacotes via rpm-ostree."
         exit 1
@@ -111,25 +183,88 @@ setup_fedora_dnf() {
     log "═══ Configurando dependências via DNF ═══"
 
     step "Instalando pacotes de desenvolvimento no container..."
-    sudo dnf install -y \
-        webkit2gtk4.1-devel \
-        libappindicator-gtk3-devel \
-        libsoup-devel \
-        gtk3-devel \
-        glib2-devel \
-        gobject-introspection-devel \
-        libxcb-devel \
-        openssl-devel \
-        rust cargo \
-        lld clang
+    # shellcheck disable=SC2068
+    sudo dnf install -y ${PACOTES_DNF[@]}
 
     success "Dependências instaladas com sucesso no ambiente DNF."
-    log "Rust instalado via dnf no container (dnf não tem o problema de glibc-devel do rpm-ostree)."
+    log "Rust e toolchain completo instalados via dnf no container"
+    log "(dnf não tem o problema de glibc-devel do rpm-ostree)."
+
+    install_rustup
+}
+
+# ── Remoção via rpm-ostree (Host Kinoite) ─────────────────────────────────────
+teardown_fedora_rpm_ostree() {
+    log "═══ Removendo Dependências via rpm-ostree ═══"
+
+    step "Verificando transação rpm-ostree em andamento..."
+    if rpm-ostree status 2>&1 | grep -q "Transaction in progress"; then
+        warn "Transação em andamento. Cancelando antes de prosseguir..."
+        rpm-ostree cancel || true
+        sleep 2
+    fi
+
+    step "Verificando quais pacotes do layer estão instalados..."
+
+    local instalados=()
+    for pkg in "${PACOTES_RPM_OSTREE[@]}"; do
+        if rpm -q "$pkg" &>/dev/null; then
+            instalados+=("$pkg")
+        else
+            log "  ✗ não instalado (ignorando): $pkg"
+        fi
+    done
+
+    if [ ${#instalados[@]} -eq 0 ]; then
+        success "Nenhum pacote do layer está instalado. Nada a remover."
+        return 0
+    fi
+
+    echo ""
+    log "Pacotes a remover (${#instalados[@]}): ${instalados[*]}"
+    echo ""
+
+    step "Solicitando privilégios para o comando rpm-ostree..."
+    if sudo rpm-ostree uninstall "${instalados[@]}"; then
+        success "Remoção concluída com sucesso pelo rpm-ostree."
+        echo ""
+        warn "📢 ATENÇÃO: Reinicie a máquina para aplicar a remoção na árvore do sistema."
+        warn "Execute: sudo systemctl reboot"
+    else
+        error "Falha ao remover pacotes via rpm-ostree."
+        exit 1
+    fi
+}
+
+# ── Remoção via DNF (Fallback para Container/Toolbox) ────────────────────────
+teardown_fedora_dnf() {
+    log "═══ Removendo dependências via DNF ═══"
+
+    step "Removendo pacotes de desenvolvimento do container..."
+    # shellcheck disable=SC2068
+    sudo dnf remove -y ${PACOTES_DNF[@]} || true
+
+    step "Removendo dependências órfãs..."
+    sudo dnf autoremove -y
+
+    success "Dependências removidas com sucesso no ambiente DNF."
 }
 
 # ── Fluxo Principal ───────────────────────────────────────────────────────────
 main() {
+    local action="${1:-install}"
+
+    case "$action" in
+        install|remove) ;;
+        *)
+            error "Ação inválida: '$action'"
+            error "Uso: $0 [install|remove]  (padrão: install)"
+            exit 1
+            ;;
+    esac
+
     log "═══ Automated Installer — Claw Launcher Dependencies ═══"
+    log "Ação: $action"
 
     local pkg_manager
     pkg_manager=$(detect_package_manager)
@@ -139,10 +274,18 @@ main() {
 
     case "$pkg_manager" in
         rpm-ostree)
-            setup_fedora_rpm_ostree
+            if [ "$action" = "install" ]; then
+                setup_fedora_rpm_ostree
+            else
+                teardown_fedora_rpm_ostree
+            fi
             ;;
         dnf)
-            setup_fedora_dnf
+            if [ "$action" = "install" ]; then
+                setup_fedora_dnf
+            else
+                teardown_fedora_dnf
+            fi
             ;;
         *)
             error "Gerenciador de pacotes não suportado ou ambiente desconhecido."

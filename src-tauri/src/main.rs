@@ -225,7 +225,7 @@ fn manage_onenote_gui() -> Result<String, String> {
         run_sh(&["uninstall-id", "Claw_OneNote", "n", "n"])
     } else {
         run_sh(&["create-install", "OneNote",
-                 "https://onenote.cloud.microsoft/pt-br/", "onenote"])
+                 "https://www.onenote.com/notebooks", "onenote"])
     }
 }
 

@@ -362,6 +362,10 @@ get_instances() {
 
 generate_unique_app_id() {
     local base_id="$1"
+    if [ "$base_id" = "Claw_OneNote" ]; then
+        echo "Claw_OneNote"
+        return
+    fi
     local candidate="$base_id"
     local index=1
     while [ -d "${SCRIPT_DIR}/instance_${candidate}" ]; do
@@ -512,7 +516,7 @@ install_icons() {
 
 # Mapeamento de links com ícones e nomes descritivos
 declare -A LINK_MAP=(
-    ["https://onenote.cloud.microsoft/pt-br/"]="OneNote:onenote"
+    ["https://www.onenote.com/notebooks"]="OneNote:onenote"
     ["https://vscode.dev/?vscode-lang=pt-br"]="VSCode:vscode"
     ["https://gemini.google.com/app?hl=pt-BR"]="Gemini:Gemini"
     ["https://claude.ai/new"]="Claude:claudecode"
@@ -553,7 +557,7 @@ list_link_options() {
         echo "https://mail.google.com/mail/?authuser=0"
         echo "https://onedrive.live.com/?view=0"
         echo "https://heliowallet.com/"
-        echo "https://onenote.cloud.microsoft/pt-br/"
+        echo "https://www.onenote.com/notebooks"
 
         if [ -f "$list_file" ]; then
             grep -Eo '^https?://[^[:space:]]+' "$list_file"
@@ -638,7 +642,7 @@ guess_app_name_from_url() {
         *myetherwallet.com*)       echo "MyEtherWallet" ;;
         *heliowallet.com*)         echo "HelioWallet" ;;
         *etherscan.io*)            echo "Etherscan" ;;
-        *onenote.cloud.microsoft*) echo "OneNote" ;;
+        *onenote.cloud.microsoft*|*onenote.com*) echo "OneNote" ;;
         *) echo "$host" | sed -E 's/[^a-zA-Z0-9]+/ /g; s/^ //; s/ $//' ;;
     esac
 }
@@ -665,7 +669,7 @@ guess_icon_name_from_url() {
         *myetherwallet.com*)       echo "myetherwallet" ;;
         *heliowallet.com*)         echo "HelioWallet" ;;
         *etherscan.io*)            echo "etherscan" ;;
-        *onenote.cloud.microsoft*) echo "onenote" ;;
+        *onenote.cloud.microsoft*|*onenote.com*) echo "onenote" ;;
         *) echo "$host" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g' ;;
     esac
 }
@@ -1075,7 +1079,7 @@ manage_onenote() {
         fi
     else
         log "═══ Instalação Expressa: OneNote ═══"
-        install_new_instance "OneNote" "https://onenote.cloud.microsoft/pt-br/" "onenote"
+        install_new_instance "OneNote" "https://www.onenote.com/notebooks" "onenote"
         [ -n "$LAST_CREATED_FOLDER" ] && install_instance_to_system "${SCRIPT_DIR}/${LAST_CREATED_FOLDER}"
     fi
 }
