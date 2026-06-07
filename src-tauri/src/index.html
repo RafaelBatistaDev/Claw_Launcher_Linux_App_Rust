@@ -10,7 +10,7 @@ html,body{height:100%;width:100%}
 body{font-family:system-ui,-apple-system,sans-serif;background:#0d0d1a;color:#e2e2e2;
      display:flex;flex-direction:row;height:100vh;overflow:hidden}
 
-/* Sidebar */
+/* ── Sidebar ── */
 nav{width:200px;min-width:200px;background:#13132b;border-right:1px solid #222;
     display:flex;flex-direction:column;padding:16px 0;overflow-y:auto}
 nav h2{color:#a78bfa;font-size:.75rem;padding:10px 16px 12px;
@@ -19,18 +19,20 @@ nav button{display:flex;align-items:center;gap:12px;width:100%;padding:11px 16px
            background:none;border:none;color:#999;font-size:.85rem;font-weight:500;
            cursor:pointer;text-align:left;transition:all .2s ease;position:relative}
 nav button:hover{background:rgba(124,58,237,0.1);color:#e2e2e2}
-nav button.active{background:rgba(124,58,237,0.15);color:#c4b5fd;border-left:3px solid #7c3aed}
-nav button.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:70%;background:#7c3aed;border-radius:0 3px 3px 0}
+/* Barra lateral: apenas uma declaração, via ::before */
+nav button.active{background:rgba(124,58,237,0.15);color:#c4b5fd}
+nav button.active::before{content:'';position:absolute;left:0;top:50%;
+  transform:translateY(-50%);width:3px;height:70%;background:#7c3aed;border-radius:0 3px 3px 0}
 nav button .icon{font-size:1.2rem;width:20px;text-align:center;color:#888}
-nav button:hover .icon{color:#a78bfa}
+nav button:hover .icon,nav button.active .icon{color:#a78bfa}
 nav hr{border:none;border-top:1px solid #1a1a2e;margin:8px 0;opacity:.5}
 
-/* Main */
+/* ── Main ── */
 main{flex:1;display:flex;flex-direction:column;overflow:hidden;width:100%}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px;max-width:100%;position:relative}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px;position:relative}
 .content h2{font-size:1.1rem;color:#a78bfa;margin-bottom:16px;font-weight:700}
 
-/* Log */
+/* ── Log ── */
 .log-panel{background:#0a0a15;border-top:1px solid #222;height:160px;
            display:flex;flex-direction:column}
 .log-header{display:flex;justify-content:space-between;align-items:center;
@@ -41,7 +43,7 @@ main{flex:1;display:flex;flex-direction:column;overflow:hidden;width:100%}
 pre#log{flex:1;overflow-y:auto;padding:8px 12px;font-family:monospace;
         font-size:.78rem;line-height:1.5;color:#8afc96;white-space:pre-wrap}
 
-/* Forms */
+/* ── Forms ── */
 .form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
 .form-group label{font-size:.75rem;color:#888;text-transform:uppercase;letter-spacing:.04em}
 .form-group input,.form-group select{padding:9px 12px;background:#1c1c2e;
@@ -49,31 +51,30 @@ pre#log{flex:1;overflow-y:auto;padding:8px 12px;font-family:monospace;
 .form-group input:focus,.form-group select:focus{outline:none;border-color:#7c3aed}
 .form-group input::placeholder{color:#444}
 
-/* Buttons */
-.btn{padding:10px 20px;border:none;border-radius:8px;font-size:.85rem;
-     font-weight:600;cursor:pointer;transition:all .2s ease;display:inline-block;
-     text-align:center;user-select:none;box-shadow:0 2px 4px rgba(0,0,0,0.2)}
+/* ── Buttons ── */
+.btn{padding:10px 20px;border:none;border-radius:8px;font-size:.85rem;font-weight:600;
+     cursor:pointer;transition:all .2s ease;display:inline-block;text-align:center;
+     user-select:none;box-shadow:0 2px 4px rgba(0,0,0,0.2)}
 .btn-primary{background:#7c3aed;color:#fff;border:1px solid #7c3aed}
 .btn-primary:hover{background:#6d28d9;border-color:#6d28d9;box-shadow:0 4px 8px rgba(124,58,237,0.3)}
-.btn-primary:active{transform:scale(0.98)}
 .btn-danger{background:#991b1b;color:#fff;border:1px solid #991b1b}
 .btn-danger:hover{background:#7f1d1d;border-color:#7f1d1d;box-shadow:0 4px 8px rgba(153,27,27,0.3)}
-.btn-danger:active{transform:scale(0.98)}
+.btn-primary:active,.btn-danger:active{transform:scale(0.98)}
 .btn-sm{padding:6px 14px;font-size:.78rem}
 .btn:disabled{background:#2a2a3a;color:#555;cursor:not-allowed;box-shadow:none}
 
-/* Cards grid */
+/* ── Cards ── */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .card{background:#1c1c2e;border:1px solid #2a2a3a;border-radius:10px;
       padding:14px 10px;text-align:center;cursor:pointer;
-      transition:border-color .2s,background .2s,transform .2s;
-      user-select:none}
+      transition:border-color .2s,background .2s,transform .2s;user-select:none}
 .card:hover{border-color:#7c3aed;background:#1e1e3f;transform:translateY(-2px)}
+.card-icon{font-size:1.8rem;margin-bottom:6px}
+.card-icon img{width:24px;height:24px;object-fit:contain;display:block;margin:0 auto}
 .card .name{font-size:.85rem;font-weight:600;margin:6px 0 2px}
 .card .url{font-size:.68rem;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card-icon{font-size:1.8rem;margin-bottom:6px}
 
-/* Table */
+/* ── Table ── */
 table{width:100%;border-collapse:collapse;font-size:.85rem}
 th{text-align:left;padding:10px 12px;color:#888;border-bottom:2px solid #222;
    font-size:.75rem;text-transform:uppercase;font-weight:700}
@@ -83,11 +84,21 @@ tr:hover td{background:#131328}
 .badge-ok{background:#14532d;color:#86efac}
 .badge-no{background:#2a2a2a;color:#666}
 
-/* Responsive adjustments */
+/* ── Misc ── */
+.warn-box{background:#2d1515;border:1px solid #7f1d1d;border-radius:8px;
+          padding:16px;margin-bottom:16px;color:#fca5a5;font-size:.88rem;line-height:1.6}
+.warn-box strong{display:block;margin-bottom:6px;color:#f87171}
+.check-row{display:flex;align-items:center;gap:8px;margin:10px 0;font-size:.88rem}
+.check-row input[type=checkbox]{width:16px;height:16px;accent-color:#7c3aed}
+.alert{padding:10px 14px;border-radius:7px;font-size:.83rem;margin-bottom:12px}
+.alert-info{background:#1e1e3f;border:1px solid #3730a3;color:#a5b4fc}
+.alert-warn{background:#2d1f00;border:1px solid #92400e;color:#fcd34d}
+
+/* ── Responsive ── */
 @media (max-width:1024px){
   body{flex-direction:column}
   nav{width:100%;min-width:100%;border-right:none;border-bottom:1px solid #222;
-     flex-direction:row;overflow-x:auto;overflow-y:visible;padding:8px 0;height:auto}
+      flex-direction:row;overflow-x:auto;overflow-y:visible;padding:8px 0;height:auto}
   nav h2{display:none}
   nav button{min-width:auto;padding:8px 12px;font-size:.75rem}
   nav button .icon{font-size:1rem}
@@ -96,11 +107,8 @@ tr:hover td{background:#131328}
   .grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
   .log-panel{height:120px}
 }
-
 @media (max-width:640px){
-  body{flex-direction:column}
-  nav{width:100%;border-right:none;border-bottom:1px solid #222;flex-direction:row}
-  nav button{min-width:auto;padding:6px 10px;font-size:.7rem}
+  nav button{padding:6px 10px;font-size:.7rem}
   nav button .icon{font-size:.9rem;width:16px}
   nav hr{display:none}
   .content{padding:12px;font-size:.85rem}
@@ -114,64 +122,38 @@ tr:hover td{background:#131328}
   .btn{padding:8px 16px;font-size:.8rem}
   .btn-sm{padding:5px 10px;font-size:.7rem}
   table{font-size:.75rem}
-  th{padding:8px 6px}
-  td{padding:8px 6px}
+  th,td{padding:8px 6px}
   .log-panel{height:100px}
   pre#log{font-size:.7rem}
-}
-
-/* Warning box */
-.warn-box{background:#2d1515;border:1px solid #7f1d1d;border-radius:8px;
-          padding:16px;margin-bottom:16px;color:#fca5a5;font-size:.88rem;line-height:1.6}
-.warn-box strong{display:block;margin-bottom:6px;color:#f87171}
-
-/* Checkbox row */
-.check-row{display:flex;align-items:center;gap:8px;margin:10px 0;font-size:.88rem}
-.check-row input[type=checkbox]{width:16px;height:16px;accent-color:#7c3aed}
-
-/* Alert */
-.alert{padding:10px 14px;border-radius:7px;font-size:.83rem;margin-bottom:12px}
-.alert-info{background:#1e1e3f;border:1px solid #3730a3;color:#a5b4fc}
-.alert-warn{background:#2d1f00;border:1px solid #92400e;color:#fcd34d}
-
-/* Adicional: Imagens de ícones em cards */
-.card-icon img {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-  display: block;
-  margin: 0 auto;
 }
 </style>
 </head>
 <body>
 
-<nav>
+<nav id="nav">
   <h2>Claw</h2>
-  <button class="active" onclick="show('preconfigured')"><span class="icon">★</span>Pré-configurado</button>
-  <button onclick="show('custom')"><span class="icon">✎</span>Personalizado</button>
-  <button onclick="show('install')"><span class="icon">↓</span>Instalar</button>
-  <button onclick="show('uninstall')"><span class="icon">✕</span>Desinstalar</button>
-  <button onclick="show('list')"><span class="icon">≡</span>Listar</button>
-  <button onclick="show('cache')"><span class="icon">⊘</span>Cache</button>
-  <button onclick="show('onenote')"><span class="icon">⊞</span>OneNote</button>
+  <button data-pane="preconfigured"><span class="icon">★</span>Pré-configurado</button>
+  <button data-pane="custom"><span class="icon">✎</span>Personalizado</button>
+  <button data-pane="install"><span class="icon">↓</span>Instalar</button>
+  <button data-pane="uninstall"><span class="icon">✕</span>Desinstalar</button>
+  <button data-pane="list"><span class="icon">≡</span>Listar</button>
+  <button data-pane="cache"><span class="icon">⊘</span>Cache</button>
+  <button data-pane="onenote"><span class="icon">⊞</span>OneNote</button>
   <hr>
-  <button onclick="show('build')"><span class="icon">⚒</span>Compilar</button>
-  <button onclick="show('clean')"><span class="icon">◧</span>Limpar</button>
-  <button onclick="show('purge')"><span class="icon">⚠</span>Purgar</button>
+  <button data-pane="build"><span class="icon">⚒</span>Compilar</button>
+  <button data-pane="clean"><span class="icon">◧</span>Limpar</button>
+  <button data-pane="purge"><span class="icon">⚠</span>Purgar</button>
 </nav>
 
 <main>
-  <div class="content">
+  <div class="content" id="content">
 
-    <!-- 1. Pré-configurado -->
     <div id="pane-preconfigured">
       <h2>★ Apps Pré-configurados</h2>
       <div id="preset-grid" class="grid"></div>
     </div>
 
-    <!-- 2. Personalizado -->
-    <div id="pane-custom" style="display:none">
+    <div id="pane-custom" hidden>
       <h2>✎ Criar App Personalizado</h2>
       <div class="form-group"><label>Nome do App</label>
         <input id="c-name" placeholder="ex: ChatGPT"></div>
@@ -179,60 +161,52 @@ tr:hover td{background:#131328}
         <input id="c-url" type="url" placeholder="https://chat.openai.com"></div>
       <div class="form-group"><label>Ícone</label>
         <select id="c-icon"><option value="">-- Selecione --</option></select></div>
-      <button class="btn btn-primary" onclick="doCustom()">Criar e Instalar</button>
+      <button class="btn btn-primary" id="btn-custom">Criar e Instalar</button>
     </div>
 
-    <!-- 3. Instalar no sistema -->
-    <div id="pane-install" style="display:none">
+    <div id="pane-install" hidden>
       <h2>↓ Instalar Instância no Sistema</h2>
       <div id="install-list"></div>
     </div>
 
-    <!-- 4. Desinstalar -->
-    <div id="pane-uninstall" style="display:none">
+    <div id="pane-uninstall" hidden>
       <h2>✕ Desinstalar Instância</h2>
       <div id="uninstall-list"></div>
     </div>
 
-    <!-- 5. Listar -->
-    <div id="pane-list" style="display:none">
+    <div id="pane-list" hidden>
       <h2>≡ Instâncias</h2>
       <table><thead><tr>
         <th>App ID</th><th>Nome</th><th>URL</th><th>Sistema</th>
       </tr></thead><tbody id="list-body"></tbody></table>
     </div>
 
-    <!-- 6. Cache -->
-    <div id="pane-cache" style="display:none">
+    <div id="pane-cache" hidden>
       <h2>⊘ Limpar Cache</h2>
       <div id="cache-list"></div>
     </div>
 
-    <!-- 7. OneNote -->
-    <div id="pane-onenote" style="display:none">
+    <div id="pane-onenote" hidden>
       <h2>⊞ OneNote</h2>
       <p id="onenote-status" style="margin-bottom:16px;color:#aaa;font-size:.9rem"></p>
-      <button id="onenote-btn" class="btn btn-primary" onclick="doOneNote()">…</button>
+      <button id="onenote-btn" class="btn btn-primary">…</button>
     </div>
 
-    <!-- 8. Compilar -->
-    <div id="pane-build" style="display:none">
+    <div id="pane-build" hidden>
       <h2>⚒ Compilar e Instalar</h2>
       <p style="color:#aaa;font-size:.88rem;margin-bottom:16px">
         Compila o binário Rust e instala em ~/.local/bin/claw-launcher.</p>
-      <button class="btn btn-primary" onclick="doBuild()">Compilar</button>
+      <button class="btn btn-primary" id="btn-build">Compilar</button>
     </div>
 
-    <!-- 9. Limpar builds -->
-    <div id="pane-clean" style="display:none">
+    <div id="pane-clean" hidden>
       <h2>◧ Limpar Builds Antigos</h2>
       <p style="color:#aaa;font-size:.88rem;margin-bottom:16px">
         Remove cache de compilação com mais de 30 dias.</p>
-      <button class="btn btn-primary" onclick="doClean()">Limpar</button>
+      <button class="btn btn-primary" id="btn-clean">Limpar</button>
     </div>
 
-    <!-- 10. Purgar -->
-    <div id="pane-purge" style="display:none">
+    <div id="pane-purge" hidden>
       <h2>⚠ Purgar Tudo</h2>
       <div class="warn-box">
         <strong>⚠ AÇÃO DESTRUTIVA E IRREVERSÍVEL</strong>
@@ -243,7 +217,7 @@ tr:hover td{background:#131328}
         <input type="checkbox" id="purge-confirm">
         <label for="purge-confirm">Entendo que isso apagará tudo permanentemente</label>
       </div>
-      <button class="btn btn-danger" onclick="doPurge()" style="margin-top:12px">
+      <button class="btn btn-danger" id="btn-purge" style="margin-top:12px">
         PURGAR TUDO
       </button>
     </div>
@@ -253,270 +227,322 @@ tr:hover td{background:#131328}
   <div class="log-panel">
     <div class="log-header">
       <span>Output</span>
-      <button onclick="document.getElementById('log').textContent=''">Limpar</button>
+      <button id="btn-clear-log">Limpar</button>
     </div>
     <pre id="log">Pronto.</pre>
   </div>
 </main>
 
 <script>
-// Importar invoke do Tauri
-const { invoke } = window.__TAURI_INTERNALS__;
+'use strict';
 
-// ── Preset links (espelho do LINK_MAP do bash) ────────────────────────────────
+// ── Tauri invoke (com fallback defensivo) ─────────────────────────────────────
+const invoke = window.__TAURI_INTERNALS__?.invoke
+  ?? (() => Promise.reject(new Error('Tauri não disponível')));
+
+// ── Presets (espelho do LINK_MAP do bash) ─────────────────────────────────────
 const PRESET = [
-  {url:"https://claude.ai/new",             name:"Claude",        icon:"claudecode"},
-  {url:"https://chat.deepseek.com/",        name:"DeepSeek",      icon:"deepseek"},
-  {url:"https://gemini.google.com/app?hl=pt-BR", name:"Gemini",  icon:"Gemini"},
-  {url:"https://onenote.cloud.microsoft/pt-br/", name:"OneNote",  icon:"onenote"},
-  {url:"https://vscode.dev/?vscode-lang=pt-br",  name:"VSCode",   icon:"vscode"},
-  {url:"https://mail.google.com/mail/?authuser=0",name:"Gmail",   icon:"gmail"},
-  {url:"https://github.com/",               name:"GitHub",        icon:"github"},
-  {url:"https://www.linkedin.com/",         name:"LinkedIn",      icon:"linkedin"},
-  {url:"https://web.telegram.org/k/#/login",name:"Telegram",      icon:"Telegram"},
-  {url:"https://web.whatsapp.com/",         name:"WhatsApp",      icon:"whatsapp"},
-  {url:"https://www.instagram.com/",        name:"Instagram",     icon:"instagram"},
-  {url:"https://www.netflix.com/br/",       name:"Netflix",       icon:"netflix"},
-  {url:"https://www.youtube.com/?app=desktop",name:"YouTube",     icon:"youtube"},
-  {url:"https://www.roblox.com/pt/login",   name:"Roblox",        icon:"roblox"},
-  {url:"https://etherscan.io/",             name:"Etherscan",     icon:"etherscan"},
-  {url:"https://app.myetherwallet.com/access?type=default",name:"MyEtherWallet",icon:"myetherwallet"},
-  {url:"https://heliowallet.com/",          name:"HelioWallet",   icon:"HelioWallet"},
-  {url:"https://onedrive.live.com/?view=0", name:"OneDrive",      icon:"onedrive"},
+  { url: 'https://claude.ai/new',                          name: 'Claude',         icon: 'claudecode'   },
+  { url: 'https://chat.deepseek.com/',                     name: 'DeepSeek',       icon: 'deepseek'     },
+  { url: 'https://gemini.google.com/app?hl=pt-BR',         name: 'Gemini',         icon: 'Gemini'       },
+  { url: 'https://onenote.cloud.microsoft/pt-br/',         name: 'OneNote',        icon: 'onenote'      },
+  { url: 'https://vscode.dev/?vscode-lang=pt-br',          name: 'VSCode',         icon: 'vscode'       },
+  { url: 'https://mail.google.com/mail/?authuser=0',       name: 'Gmail',          icon: 'gmail'        },
+  { url: 'https://github.com/',                            name: 'GitHub',         icon: 'github'       },
+  { url: 'https://www.linkedin.com/',                      name: 'LinkedIn',       icon: 'linkedin'     },
+  { url: 'https://web.telegram.org/k/#/login',             name: 'Telegram',       icon: 'Telegram'     },
+  { url: 'https://web.whatsapp.com/',                      name: 'WhatsApp',       icon: 'whatsapp'     },
+  { url: 'https://www.instagram.com/',                     name: 'Instagram',      icon: 'instagram'    },
+  { url: 'https://www.netflix.com/br/',                    name: 'Netflix',        icon: 'netflix'      },
+  { url: 'https://www.youtube.com/?app=desktop',           name: 'YouTube',        icon: 'youtube'      },
+  { url: 'https://www.roblox.com/pt/login',                name: 'Roblox',         icon: 'roblox'       },
+  { url: 'https://etherscan.io/',                          name: 'Etherscan',      icon: 'etherscan'    },
+  { url: 'https://app.myetherwallet.com/access?type=default', name: 'MyEtherWallet', icon: 'myetherwallet' },
+  { url: 'https://heliowallet.com/',                       name: 'HelioWallet',    icon: 'HelioWallet'  },
+  { url: 'https://onedrive.live.com/?view=0',              name: 'OneDrive',       icon: 'onedrive'     },
 ];
 
-// ── Utilitários ───────────────────────────────────────────────────────────────
-let scriptChecked = false;
-let scriptAvailable = false;
+// ── Estado da aplicação (encapsulado — sem vars globais soltas) ───────────────
+const App = {
+  scriptReady: null,   // null = não verificado, true/false = resultado
 
-const log = (msg, err=false) => {
-  const el = document.getElementById('log');
-  el.textContent += (err ? '[ERRO] ' : '') + msg + '\n';
-  el.scrollTop = el.scrollHeight;
+  /** Verifica disponibilidade do script uma única vez. */
+  async checkScript() {
+    if (this.scriptReady !== null) return this.scriptReady;
+    try {
+      this.scriptReady = await invoke('script_available');
+    } catch {
+      this.scriptReady = false;
+    }
+    if (!this.scriptReady) {
+      Log.write('AVISO - Script create_app.sh não encontrado.', true);
+      Log.write('AVISO - Inicie via: ./create_app.sh', true);
+    }
+    return this.scriptReady;
+  },
+
+  /** Executa comando Tauri se o script estiver disponível. */
+  async run(cmd, args = {}) {
+    if (!await this.checkScript()) return null;
+    try {
+      const out = await invoke(cmd, args);
+      if (out) Log.write(String(out).trim());
+      return out;
+    } catch (e) {
+      Log.write(String(e), true);
+      throw e;
+    }
+  },
 };
 
-async function run(cmd, args = {}) {
-  // Verifica script na primeira vez
-  if (!scriptChecked) {
+// ── Log ───────────────────────────────────────────────────────────────────────
+const Log = {
+  el: null,
+  init() { this.el = document.getElementById('log'); },
+  write(msg, isError = false) {
+    this.el.textContent += (isError ? '[ERRO] ' : '') + msg + '\n';
+    this.el.scrollTop = this.el.scrollHeight;
+  },
+  clear() { this.el.textContent = ''; },
+};
+
+// ── Navegação — mapeamento por data-pane, não por índice ──────────────────────
+const Nav = {
+  currentPane: null,
+
+  /** Ações a executar ao abrir cada painel. */
+  onShow: {
+    preconfigured: () => Preset.render(),
+    custom:        () => Custom.loadIcons(),
+    install:       () => Instances.renderInstall(),
+    uninstall:     () => Instances.renderUninstall(),
+    list:          () => Instances.renderList(),
+    cache:         () => Instances.renderCache(),
+    onenote:       () => OneNote.load(),
+  },
+
+  show(paneId) {
+    document.querySelectorAll('[id^="pane-"]').forEach(el => {
+      el.hidden = el.id !== `pane-${paneId}`;
+    });
+    document.querySelectorAll('nav button[data-pane]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.pane === paneId);
+    });
+    document.getElementById('content').scrollTop = 0;
+    this.currentPane = paneId;
+    this.onShow[paneId]?.();
+  },
+
+  init() {
+    document.getElementById('nav').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-pane]');
+      if (btn) this.show(btn.dataset.pane);
+    });
+  },
+};
+
+// ── Preset ────────────────────────────────────────────────────────────────────
+const Preset = {
+  render() {
+    const grid = document.getElementById('preset-grid');
+    grid.innerHTML = '';
+    PRESET.forEach((p, i) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.index = i;
+      card.innerHTML = `
+        <div class="card-icon" id="icon-${i}">
+          <div style="width:24px;height:24px;background:#222;margin:0 auto;border-radius:4px"></div>
+        </div>
+        <div class="name">${p.name}</div>
+        <div class="url">${p.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</div>`;
+      card.addEventListener('click', () => this.install(i));
+      grid.appendChild(card);
+
+      // Carrega ícone em background sem bloquear renderização
+      invoke('get_icon_base64', { name: p.icon })
+        .then(b64 => {
+          const container = document.getElementById(`icon-${i}`);
+          if (!container || !b64) return;
+          const src = b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
+          const img = document.createElement('img');
+          img.src = src;
+          img.alt = p.name;
+          container.replaceChildren(img);
+        })
+        .catch(() => { /* mantém placeholder */ });
+    });
+  },
+
+  async install(i) {
+    const p = PRESET[i];
+    Log.write(`Criando ${p.name}...`);
+    await App.run('create_app_gui', { name: p.name, url: p.url, icon: p.icon });
+  },
+};
+
+// ── Personalizado ─────────────────────────────────────────────────────────────
+const Custom = {
+  async loadIcons() {
     try {
-      scriptAvailable = await invoke('script_available');
-      scriptChecked = true;
-      if (!scriptAvailable) {
-        log('AVISO - Script nao encontrado. Some features will not work.', true);
-      }
-    } catch(e) {
-      log('AVISO - Nao conseguiu verificar script', true);
-      scriptChecked = true;
-      return null;
-    }
-  }
-  
-  if (!scriptAvailable) {
-    return null; // Silenciosamente retorna null se script não está disponível
-  }
-  
-  try {
-    const out = await invoke(cmd, args);
-    if (out) log(String(out).trim());
-    return out;
-  } catch(e) {
-    const msg = String(e);
-    if (!msg.includes('Inicie via ./create_app.sh')) {
-      log(msg, true);
-    }
-    throw e;
-  }
-}
+      const icons = await invoke('list_icons_gui');
+      const sel = document.getElementById('c-icon');
+      sel.innerHTML = '<option value="">-- Nenhum --</option>' +
+        icons.map(i => `<option value="${i}">${i}</option>`).join('');
+    } catch { /* silencioso se script ausente */ }
+  },
 
-// ── Navegação ─────────────────────────────────────────────────────────────────
-const panes = ['preconfigured','custom','install','uninstall',
-               'list','cache','onenote','build','clean','purge'];
+  async create() {
+    const name = document.getElementById('c-name').value.trim();
+    const url  = document.getElementById('c-url').value.trim();
+    const icon = document.getElementById('c-icon').value;
+    if (!name || !url) { Log.write('Nome e URL obrigatórios', true); return; }
+    Log.write(`Criando ${name}...`);
+    await App.run('create_app_gui', { name, url, icon });
+  },
+};
 
-function show(id) {
-  const content = document.querySelector('.content');
-  panes.forEach(p => {
-    document.getElementById('pane-'+p).style.display = p===id ? '' : 'none';
-  });
-  document.querySelectorAll('nav button').forEach((b,i) => {
-    b.classList.toggle('active', panes[i]===id);
-  });
-  // Scroll para topo
-  if (content) content.scrollTop = 0;
-  // Carrega dados ao abrir painel
-  if (id === 'preconfigured') renderPreset();
-  if (id === 'install' || id === 'uninstall' || id === 'cache' || id === 'list') loadInstances(id);
-  if (id === 'onenote')   loadOneNote();
-  if (id === 'custom')    loadIcons();
-}
-
-// ── 1. Pré-configurado ────────────────────────────────────────────────────────
-function renderPreset() {
-  const grid = document.getElementById('preset-grid');
-  grid.innerHTML = PRESET.map((p, i) =>
-    `<div class="card" onclick="doPreset(${i})" id="card-${i}">
-       <div class="card-icon" id="icon-${i}">
-         <div style="width:24px;height:24px;background:#222;margin:0 auto;border-radius:4px"></div>
-       </div>
-       <div class="name">${p.name}</div>
-       <div class="url">${p.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</div>
-     </div>`
-  ).join('');
-
-  // Carrega as imagens via Rust em background
-  PRESET.forEach(async (p, i) => {
+// ── Instâncias (install / uninstall / list / cache) ───────────────────────────
+const Instances = {
+  /** Busca a lista uma vez e distribui para os renderers. */
+  async fetch() {
     try {
-      const b64 = await invoke('get_icon_base64', { name: p.icon });
-      const container = document.getElementById(`icon-${i}`);
-      if (container && b64) {
-        // Garante que a base64 tem o prefixo data: URI correto
-        const imgSrc = b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
-        container.innerHTML = `<img src="${imgSrc}" alt="${p.name}" style="width:24px;height:24px;object-fit:contain;display:block;margin:0 auto;" />`;
-      }
-    } catch (e) {
-      console.warn(`Erro ao carregar ícone ${p.icon}:`, e);
-      /* Mantém o placeholder se falhar */
+      const json = await invoke('list_instances_gui');
+      return JSON.parse(json);
+    } catch {
+      return [];
     }
-  });
-}
+  },
 
-async function doPreset(i) {
-  const p = PRESET[i];
-  log(`Criando ${p.name}...`);
-  try {
-    await run('create_app_gui', { name: p.name, url: p.url, icon: p.icon });
-  } catch(e) {
-    // Silenciosamente falha se script não está disponível
-  }
-}
+  async renderInstall() {
+    const inst = await this.fetch();
+    const pending = inst.filter(i => !i.installed);
+    document.getElementById('install-list').innerHTML = pending.length
+      ? pending.map(i => `
+          <p>${i.app_id}
+            <button class="btn btn-primary btn-sm" data-id="${i.app_id}"
+                    data-name="${i.name}" data-url="${i.url}">Instalar</button>
+          </p>`).join('')
+      : '<p style="color:#666">Nenhuma instância pendente.</p>';
 
-// ── 2. Personalizado ──────────────────────────────────────────────────────────
-async function loadIcons() {
-  const sel = document.getElementById('c-icon');
-  if (!scriptAvailable && scriptChecked) return; // Skip se script não disponível
-  try {
-    const icons = await invoke('list_icons_gui');
-    sel.innerHTML = '<option value="">-- Nenhum --</option>' +
-      icons.map(i => `<option value="${i}">${i}</option>`).join('');
-  } catch(e) { /* Silencioso */ }
-}
+    document.getElementById('install-list').addEventListener('click', async e => {
+      const btn = e.target.closest('button[data-id]');
+      if (!btn) return;
+      Log.write(`Instalando ${btn.dataset.id}...`);
+      await App.run('create_app_gui', {
+        name: btn.dataset.name, url: btn.dataset.url, icon: '',
+      });
+    }, { once: true });
+  },
 
-async function doCustom() {
-  const name = document.getElementById('c-name').value.trim();
-  const url = document.getElementById('c-url').value.trim();
-  const icon = document.getElementById('c-icon').value;
-  if (!name || !url) { log('Nome e URL obrigatórios', true); return; }
-  log(`Criando ${name}...`);
-  await run('create_app_gui', { name, url, icon });
-}
-
-// ── 3-6. Instâncias, Desinstalar, Cache, Listar ────────────────────────────────
-async function loadInstances(pane) {
-  if (!scriptAvailable && scriptChecked) return; // Skip se script não disponível
-  try {
-    const json = await invoke('list_instances_gui');
-    const inst = JSON.parse(json);
-    if (pane === 'install') {
-      document.getElementById('install-list').innerHTML = inst.map(i =>
-        i.installed ? '' : `<p>${i.app_id} <button class="btn btn-primary btn-sm" 
-        onclick="doInstall('${i.app_id}')">Instalar</button></p>`).filter(x=>x).join('');
-    } else if (pane === 'uninstall') {
-      document.getElementById('uninstall-list').innerHTML = inst.map(i =>
-        `<p>${i.app_id} - ${i.name}<br/>
+  async renderUninstall() {
+    const inst = await this.fetch();
+    document.getElementById('uninstall-list').innerHTML = inst.map(i => `
+      <p>${i.app_id} - ${i.name}<br>
         <label><input type="checkbox" id="clean_${i.app_id}"> Limpar dados</label>
-        <label><input type="checkbox" id="del_${i.app_id}"> Deletar pasta</label><br/>
-        <button class="btn btn-danger btn-sm" onclick="doUninstall('${i.app_id}')">Desinstalar</button></p>`).join('');
-    } else if (pane === 'cache') {
-      document.getElementById('cache-list').innerHTML = inst.map(i =>
-        `<p>${i.app_id}<br/><button class="btn btn-sm" onclick="doClearCache('${i.app_id}')">Limpar</button></p>`).join('');
-    } else if (pane === 'list') {
-      document.getElementById('list-body').innerHTML = inst.map(i =>
-        `<tr><td>${i.app_id}</td><td>${i.name}</td><td>${i.url}</td>
-        <td><span class="badge ${i.installed?'badge-ok':'badge-no'}">${i.installed?'Sim':'Não'}</span></td></tr>`).join('');
-    }
-  } catch(e) { /* Silencioso */ }
-}
+        <label><input type="checkbox" id="del_${i.app_id}"> Deletar pasta</label><br>
+        <button class="btn btn-danger btn-sm" data-id="${i.app_id}"
+                style="margin-top:6px">Desinstalar</button>
+      </p>`).join('');
 
-async function doInstall(app_id) {
-  log(`Instalando ${app_id}...`);
-  const json = await invoke('list_instances_gui');
-  const inst = JSON.parse(json).find(i => i.app_id === app_id);
-  if (inst) await run('create_app_gui', { name: inst.name, url: inst.url, icon: '' });
-}
+    document.getElementById('uninstall-list').addEventListener('click', async e => {
+      const btn = e.target.closest('button[data-id]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      Log.write(`Desinstalando ${id}...`);
+      await App.run('uninstall_app_gui', {
+        appId:     id,
+        cleanData: document.getElementById(`clean_${id}`).checked,
+        delFolder: document.getElementById(`del_${id}`).checked,
+      });
+    }, { once: true });
+  },
 
-async function doUninstall(app_id) {
-  const clean = document.getElementById(`clean_${app_id}`).checked;
-  const del = document.getElementById(`del_${app_id}`).checked;
-  log(`Desinstalando ${app_id}...`);
-  await run('uninstall_app_gui', { appId: app_id, cleanData: clean, delFolder: del });
-}
+  async renderList() {
+    const inst = await this.fetch();
+    document.getElementById('list-body').innerHTML = inst.map(i => `
+      <tr>
+        <td>${i.app_id}</td><td>${i.name}</td><td>${i.url}</td>
+        <td><span class="badge ${i.installed ? 'badge-ok' : 'badge-no'}">
+          ${i.installed ? 'Sim' : 'Não'}</span></td>
+      </tr>`).join('');
+  },
 
-async function doClearCache(app_id) {
-  log(`Limpando cache de ${app_id}...`);
-  await run('clear_cache_gui', { appId: app_id });
-}
+  async renderCache() {
+    const inst = await this.fetch();
+    document.getElementById('cache-list').innerHTML = inst.map(i => `
+      <p>${i.app_id}
+        <button class="btn btn-sm" data-id="${i.app_id}">Limpar</button>
+      </p>`).join('');
 
-// ── 7. OneNote ────────────────────────────────────────────────────────────────
-async function loadOneNote() {
-  if (!scriptAvailable && scriptChecked) return; // Skip se script não disponível
-  try {
-    const installed = await invoke('onenote_installed');
-    const btn = document.getElementById('onenote-btn');
-    const status = document.getElementById('onenote-status');
-    if (installed) {
-      btn.textContent = 'Desinstalar';
-      btn.className = 'btn btn-danger';
-      status.textContent = '✓ OneNote já está instalado';
-    } else {
-      btn.textContent = 'Instalar';
-      btn.className = 'btn btn-primary';
-      status.textContent = '⊘ OneNote não está instalado';
-    }
-  } catch(e) { /* Silencioso */ }
-}
+    document.getElementById('cache-list').addEventListener('click', async e => {
+      const btn = e.target.closest('button[data-id]');
+      if (!btn) return;
+      Log.write(`Limpando cache de ${btn.dataset.id}...`);
+      await App.run('clear_cache_gui', { appId: btn.dataset.id });
+    }, { once: true });
+  },
+};
 
-async function doOneNote() {
-  log('Gerenciando OneNote...');
-  await run('manage_onenote_gui');
-  setTimeout(loadOneNote, 500);
-}
-
-// ── 8-10. Build, Clean, Purge ────────────────────────────────────────────────
-async function doBuild() {
-  log('Compilando claw-launcher...');
-  await run('build_gui');
-}
-
-async function doClean() {
-  log('Limpando builds antigos...');
-  await run('clean_builds_gui');
-}
-
-async function doPurge() {
-  const confirm = document.getElementById('purge-confirm').checked;
-  if (!confirm) { log('Você precisa confirmar', true); return; }
-  log('PURGING EVERYTHING...');
-  await run('purge_all_gui');
-}
-
-// Inicializa ao carregar
-window.addEventListener('DOMContentLoaded', async () => { 
-  log('Iniciando Claw Launcher...');
-  // Verifica script automaticamente na primeira vez
-  if (!scriptChecked) {
+// ── OneNote ───────────────────────────────────────────────────────────────────
+const OneNote = {
+  async load() {
     try {
-      scriptAvailable = await invoke('script_available');
-      scriptChecked = true;
-      if (scriptAvailable) {
-        log('OK - Script encontrado. Interface pronta!');
+      const installed = await invoke('onenote_installed');
+      const btn    = document.getElementById('onenote-btn');
+      const status = document.getElementById('onenote-status');
+      if (installed) {
+        btn.textContent = 'Desinstalar';
+        btn.className   = 'btn btn-danger';
+        status.textContent = '✓ OneNote já está instalado';
       } else {
-        log('AVISO - Script create_app.sh nao foi encontrado.', true);
-        log('AVISO - Inicie via: ./create_app.sh', true);
+        btn.textContent = 'Instalar';
+        btn.className   = 'btn btn-primary';
+        status.textContent = '⊘ OneNote não está instalado';
       }
-    } catch(e) {
-      log('AVISO - Funcionalidades de script estarao desativadas', true);
-      scriptChecked = true;
+    } catch { /* silencioso */ }
+  },
+
+  async toggle() {
+    Log.write('Gerenciando OneNote...');
+    await App.run('manage_onenote_gui');
+    await this.load();   // Aguarda a Promise — sem setTimeout cego
+  },
+};
+
+// ── Inicialização ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  Log.init();
+  Nav.init();
+
+  // Botões via addEventListener — sem onclick inline no HTML
+  document.getElementById('btn-custom').addEventListener('click', () => Custom.create());
+  document.getElementById('btn-build').addEventListener('click', async () => {
+    Log.write('Compilando claw-launcher...');
+    await App.run('build_gui');
+  });
+  document.getElementById('btn-clean').addEventListener('click', async () => {
+    Log.write('Limpando builds antigos...');
+    await App.run('clean_builds_gui');
+  });
+  document.getElementById('btn-purge').addEventListener('click', async () => {
+    if (!document.getElementById('purge-confirm').checked) {
+      Log.write('Você precisa confirmar', true);
+      return;
     }
-  }
-  show('preconfigured'); 
+    Log.write('PURGING EVERYTHING...');
+    await App.run('purge_all_gui');
+  });
+  document.getElementById('btn-clear-log').addEventListener('click', () => Log.clear());
+  document.getElementById('onenote-btn').addEventListener('click', () => OneNote.toggle());
+
+  // Verificação inicial do script
+  Log.write('Iniciando Claw Launcher...');
+  const ready = await App.checkScript();
+  if (ready) Log.write('OK - Script encontrado. Interface pronta!');
+
+  Nav.show('preconfigured');
 });
 </script>
+</body>
+</html>
