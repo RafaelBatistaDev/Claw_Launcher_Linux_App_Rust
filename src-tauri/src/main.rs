@@ -225,7 +225,7 @@ fn manage_onenote_gui() -> Result<String, String> {
         run_sh(&["uninstall-id", "Claw_OneNote", "n", "n"])
     } else {
         run_sh(&["create-install", "OneNote",
-                 "https://www.onenote.com/notebooks", "onenote"])
+                 "https://onenote.cloud.microsoft/", "onenote"])
     }
 }
 
@@ -254,6 +254,17 @@ fn clean_builds_gui() -> Result<String, String> {
 #[tauri::command]
 fn purge_all_gui() -> Result<String, String> {
     run_sh(&["purge-force"])
+}
+
+#[tauri::command]
+fn load_microsoft_session() -> Option<profile::SessaoMicrosoft> {
+    profile::carregar_sessao_local().ok()
+}
+
+#[tauri::command]
+fn save_microsoft_session(sessao: profile::SessaoMicrosoft) -> Result<(), String> {
+    profile::log_autenticacao("Salvando nova sessão de autenticação no disco...");
+    profile::salvar_sessao_local(&sessao).map_err(|e| e.to_string())
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -324,60 +335,36 @@ fn main() {
             if is_gui {
                 window::build_launcher_window(app)?;
             } else {
-                let url = parsed_url.unwrap();
-                let window = window::build_webapp_window(app, &app_id, &name, url, &profile)?;
+                let processar_auth = app_id.to_lowercase().contains("onenote") 
+                    || app_id.to_lowercase().contains("onedrive")
+                    || dirs::home_dir()
+                        .map(|h| h.join(".claw").join("cache").join("semantic_cache.json").exists())
+                        .unwrap_or(false);
 
-                let window_shortcuts = window.clone();
-                window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Focused(true) = event {
-                        let inject_browser_behavior = r##"
-                        if (window.__CLAW_BROWSER_INJECTED__) return;
-                        window.__CLAW_BROWSER_INJECTED__ = true;
-                        
-                        document.addEventListener('click', function(e) {
-                            const link = e.target.closest('a[href]');
-                            if (!link) return;
-                            const href = link.getAttribute('href');
-                            if (!href || href === '#' || href.startsWith('javascript:')) return;
-                            if (href.startsWith('#')) return;
-                        }, false);
-                        
-                        const originalWindowOpen = window.open;
-                        window.open = function(url, target, features) {
-                            if (!url) return null;
-                            if (!url.startsWith('http') && !url.startsWith('//') && 
-                                !url.startsWith('data:') && !url.startsWith('blob:')) {
-                                try {
-                                    url = new URL(url, location.origin).href;
-                                } catch (e) {
-                                    url = location.href;
+                if processar_auth {
+                    profile::log_autenticacao(&format!("Iniciando aplicativo ID: {}. Verificando sessão local...", app_id));
+                    if let Ok(sessao) = profile::carregar_sessao_local() {
+                        if profile::s_expirou(&sessao) {
+                            match profile::renovar_sessao_silenciosa(&sessao) {
+                                Ok(nova_sessao) => {
+                                    if let Err(e) = profile::salvar_sessao_local(&nova_sessao) {
+                                        profile::log_autenticacao(&format!("Erro ao salvar sessão local: {}", e));
+                                    }
+                                }
+                                Err(e) => {
+                                    profile::log_autenticacao(&format!("Renovação silenciosa falhou: {}. Necessário login interativo.", e));
                                 }
                             }
-                            location.href = url;
-                            return null;
-                        };
-                        
-                        const originalFormSubmit = HTMLFormElement.prototype.submit;
-                        HTMLFormElement.prototype.submit = function() {
-                            const target = this.getAttribute('target');
-                            if (target === '_blank' || target === '_new') {
-                                this.removeAttribute('target');
-                                originalFormSubmit.call(this);
-                                this.setAttribute('target', target);
-                                return;
-                            }
-                            originalFormSubmit.call(this);
-                        };
-                        
-                        Object.defineProperty(navigator, 'userAgent', {
-                            value: (navigator.__UA__ || 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36') + ' CLAW-Browser/1.0',
-                            writable: false,
-                            configurable: false
-                        });
-                        "##;
-                        let _ = window_shortcuts.eval(inject_browser_behavior);
+                        } else {
+                            profile::log_autenticacao("Sessão local ainda é válida. Nenhuma renovação necessária.");
+                        }
+                    } else {
+                        profile::log_autenticacao("Nenhuma sessão local encontrada. Iniciando fluxo interativo.");
                     }
-                });
+                }
+
+                let url = parsed_url.unwrap();
+                let window = window::build_webapp_window(app, &app_id, &name, url, &profile)?;
 
                 if let Ok(state) = WindowState::load(&profile) {
                     let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
@@ -421,6 +408,8 @@ fn main() {
             build_gui,
             clean_builds_gui,
             purge_all_gui,
+            load_microsoft_session,
+            save_microsoft_session,
         ])
         .build(tauri::generate_context!())
         .expect("Erro ao construir aplicativo")

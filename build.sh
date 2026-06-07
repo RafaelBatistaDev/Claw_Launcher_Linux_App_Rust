@@ -94,12 +94,20 @@ main() {
     # Copiar binário
     mkdir -p "$BIN_DIR"
     if [ -f "$LAUNCHER_BIN" ]; then
-        cp "$LAUNCHER_BIN" "${LAUNCHER_BIN}.bak"
+        rm -f "${LAUNCHER_BIN}.bak" 2>/dev/null || true
+        cp --remove-destination "$LAUNCHER_BIN" "${LAUNCHER_BIN}.bak" 2>/dev/null || true
         step "Backup anterior salvo em ${LAUNCHER_BIN}.bak"
     fi
+    rm -f "$LAUNCHER_BIN" 2>/dev/null || true
     cp "$BINARY_PATH" "$LAUNCHER_BIN"
     chmod +x "$LAUNCHER_BIN"
     success "Binário instalado em ${LAUNCHER_BIN}"
+
+    # Criar diretórios globais do Claw para sessões e logs
+    step "Criando diretórios globais do Claw para sessões e logs..."
+    mkdir -p "${HOME}/.claw/cache"
+    mkdir -p "${HOME}/.claw/logs"
+    success "Diretórios globais ~/.claw/cache e ~/.claw/logs criados."
 
     # Salvar o caminho do repositório para o launcher encontrar os ícones/scripts
     mkdir -p "${HOME}/.config/claw-launcher"

@@ -831,11 +831,12 @@ install_instance_to_system() {
     local cache_dir="${REAL_HOME}/.cache/${APP_ID}"
     
     step "Inicializando estrutura de persistência..."
-    mkdir -p "${data_dir}/webkit"
+    mkdir -p "${data_dir}/webkit/cookies"
     mkdir -p "${data_dir}/storage"
     mkdir -p "${cache_dir}/webkit"
     mkdir -p "${cache_dir}/http"
-    success "Diretórios de armazenamento criados."
+    mkdir -p "${cache_dir}/cookies"
+    success "Diretórios de armazenamento e cookies criados."
 
     update_caches
     success "═══ ${APP_NAME} instalado com sucesso ═══"
