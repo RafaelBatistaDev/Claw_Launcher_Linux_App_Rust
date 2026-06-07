@@ -8,6 +8,9 @@
 
 set -euo pipefail
 
+# ── Exporta PKG_CONFIG_PATH para WebKit4.1 + Libadwaita (evita falhas de pkg-config) ──
+export PKG_CONFIG_PATH="/usr/lib64/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+
 # ── Cores ─────────────────────────────────────────────────────────────────────
 G="\033[1;32m"; B="\033[1;34m"; Y="\033[1;33m"; R="\033[1;31m"; C="\033[1;36m"; N="\033[0m"
 
@@ -45,46 +48,190 @@ detect_package_manager() {
     fi
 }
 
+# ── Instalação de Rust via rustup ────────────────────────────────────────────
+install_rustup() {
+    step "Verificando instalação do Rust/rustup..."
+
+    # Carrega env do cargo caso já exista mas não esteja no PATH atual
+    local cargo_env="$HOME/.cargo/env"
+    # shellcheck source=/dev/null
+    [ -f "$cargo_env" ] && source "$cargo_env"
+
+    if command -v rustup &>/dev/null; then
+        success "rustup já instalado: $(rustup --version 2>&1)"
+        log "Atualizando toolchain stable..."
+        rustup update stable
+        rustup component add rust-src rustfmt clippy
+        success "Toolchain Rust atualizado."
+        return 0
+    fi
+
+    log "rustup não encontrado. Instalando via script oficial..."
+
+    if ! command -v curl &>/dev/null; then
+        error "curl não encontrado — necessário para instalar rustup."
+        error "Instale curl e execute novamente."
+        exit 1
+    fi
+
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+        --default-toolchain stable \
+        --component rust-src rustfmt clippy
+
+    # Ativa o env na sessão atual
+    # shellcheck source=/dev/null
+    source "$HOME/.cargo/env"
+
+    if command -v rustup &>/dev/null; then
+        success "Rust instalado com sucesso: $(rustc --version)"
+        success "Cargo: $(cargo --version)"
+    else
+        error "Instalação do rustup falhou — verifique a conexão e tente novamente."
+        exit 1
+    fi
+}
+
 # ── Instalação de Dependências (Fedora/RHEL via rpm-ostree) ──────────────────
 setup_fedora_rpm_ostree() {
-    log "═══ Configurando dependências para Fedora (rpm-ostree) ═══"
-    
-    step "Removendo webkit2gtk4.1-devel e libappindicator-gtk3-devel..."
-    sudo rpm-ostree uninstall --idempotent \
-        webkit2gtk4.1-devel \
-        libappindicator-gtk3-devel || warn "Pacotes de remoção não encontrados (normal em primeira execução)"
-    
-    step "Instalando webkitgtk6.0-devel, libadwaita-devel e dependências de desenvolvimento..."
-    sudo rpm-ostree install --idempotent \
-        webkitgtk6.0-devel \
-        libadwaita-devel \
-        gtk3-devel \
-        glib2-devel \
-        gobject-introspection-devel \
-        libxcb-devel \
-        openssl-devel \
-        rust \
-        lld \
+    log "═══ Iniciando Layering de Dependências via rpm-ostree ═══"
+
+    local pacotes=(
+        webkit2gtk4.1-devel
+        javascriptcoregtk4.1-devel
+        libappindicator-gtk3-devel
+        libadwaita-devel
+        libsoup-devel
+        librsvg2-devel
+        gtk3-devel
+        glib2-devel
+        gobject-introspection-devel
+        libxcb-devel
+        openssl-devel
+        make
+        lld
         clang
-    
-    success "Dependências rpm-ostree configuradas."
-    warn "⚠️  Será necessário reiniciar o sistema para aplicar as mudanças."
-    warn "Execute: sudo systemctl reboot"
+    )
+
+    step "Verificando transação rpm-ostree em andamento..."
+    if rpm-ostree status 2>&1 | grep -q "Transaction in progress"; then
+        warn "Transação em andamento detectada. Cancelando antes de prosseguir..."
+        rpm-ostree cancel || true
+        sleep 2
+    fi
+
+    step "Limpando cache de metadados RPM Fusion..."
+    sudo rm -rf /var/cache/rpm-ostree/repomd/rpmfusion-free-updates-*/ \
+                /var/cache/rpm-ostree/repomd/rpmfusion-free-*/ \
+                /var/cache/rpm-ostree/repomd/rpmfusion-nonfree-updates-*/ \
+                /var/cache/rpm-ostree/repomd/rpmfusion-nonfree-*/ 2>/dev/null || true
+
+    step "Verificando quais pacotes já estão instalados no layer..."
+
+    local faltando=()
+    for pkg in "${pacotes[@]}"; do
+        if rpm -q "$pkg" &>/dev/null; then
+            log "  ✓ já instalado: $pkg"
+        else
+            faltando+=("$pkg")
+        fi
+    done
+
+    if [ ${#faltando[@]} -eq 0 ]; then
+        success "Todos os pacotes já estão instalados no sistema."
+        install_rustup
+        return 0
+    fi
+
+    echo ""
+    log "Pacotes faltando (${#faltando[@]}): ${faltando[*]}"
+    echo ""
+
+    step "Solicitando privilégios para o comando rpm-ostree..."
+    if sudo rpm-ostree install --idempotent "${faltando[@]}"; then
+        success "Layering concluído com sucesso pelo rpm-ostree."
+        echo ""
+        warn "📢 ATENÇÃO: Para aplicar as alterações na árvore imutável do sistema,"
+        warn "é obrigatório reiniciar a máquina."
+        warn "Execute: sudo systemctl reboot"
+        echo ""
+        install_rustup
+    else
+        error "Falha ao aplicar pacotes via rpm-ostree."
+        exit 1
+    fi
+}
+
+teardown_fedora_rpm_ostree() {
+    log "═══ Removendo Dependências via rpm-ostree ═══"
+
+    local pacotes=(
+        webkit2gtk4.1-devel
+        javascriptcoregtk4.1-devel
+        libappindicator-gtk3-devel
+        libadwaita-devel
+        libsoup-devel
+        librsvg2-devel
+        gtk3-devel
+        glib2-devel
+        gobject-introspection-devel
+        libxcb-devel
+        openssl-devel
+        make
+        lld
+        clang
+    )
+
+    step "Verificando transação rpm-ostree em andamento..."
+    if rpm-ostree status 2>&1 | grep -q "Transaction in progress"; then
+        warn "Transação em andamento. Cancelando antes de prosseguir..."
+        rpm-ostree cancel || true
+        sleep 2
+    fi
+
+    step "Verificando quais pacotes do layer estão instalados..."
+
+    local instalados=()
+    for pkg in "${pacotes[@]}"; do
+        if rpm -q "$pkg" &>/dev/null; then
+            instalados+=("$pkg")
+        else
+            log "  ✗ não instalado (ignorando): $pkg"
+        fi
+    done
+
+    if [ ${#instalados[@]} -eq 0 ]; then
+        success "Nenhum pacote do layer está instalado. Nada a remover."
+        return 0
+    fi
+
+    echo ""
+    log "Pacotes a remover (${#instalados[@]}): ${instalados[*]}"
+    echo ""
+
+    step "Solicitando privilégios para o comando rpm-ostree..."
+    if sudo rpm-ostree uninstall "${instalados[@]}"; then
+        success "Remoção concluída com sucesso pelo rpm-ostree."
+        echo ""
+        warn "📢 ATENÇÃO: Reinicie a máquina para aplicar a remoção na árvore do sistema."
+        warn "Execute: sudo systemctl reboot"
+    else
+        error "Falha ao remover pacotes via rpm-ostree."
+        exit 1
+    fi
 }
 
 # ── Instalação de Dependências (Fedora/RHEL via dnf) ────────────────────────
 setup_fedora_dnf() {
     log "═══ Configurando dependências para Fedora (dnf) ═══"
     
-    step "Removendo webkit2gtk4.1-devel e libappindicator-gtk3-devel..."
-    sudo dnf remove -y \
-        webkit2gtk4.1-devel \
-        libappindicator-gtk3-devel || warn "Pacotes de remoção não encontrados"
-    
-    step "Instalando webkitgtk6.0-devel, libadwaita-devel e dependências de desenvolvimento..."
+    step "Instalando dependências de desenvolvimento..."
     sudo dnf install -y \
-        webkitgtk6.0-devel \
+        webkit2gtk4.1-devel \
+        javascriptcoregtk4.1-devel \
+        libappindicator-gtk3-devel \
         libadwaita-devel \
+        libsoup-devel \
+        librsvg2-devel \
         gtk3-devel \
         glib2-devel \
         gobject-introspection-devel \
@@ -104,15 +251,10 @@ setup_debian() {
     step "Atualizando índice de pacotes..."
     sudo apt-get update
     
-    step "Removendo webkit2gtk4.1-dev e libappindicator3-dev..."
-    sudo apt-get remove -y \
-        webkit2gtk-4.1 \
-        webkit2gtk-4.1-dev \
-        libappindicator3-dev || warn "Pacotes de remoção não encontrados"
-    
-    step "Instalando libwebkitgtk-6.0-dev, libadwaita-1-dev e dependências de desenvolvimento..."
+    step "Instalando dependências de desenvolvimento..."
     sudo apt-get install -y \
-        libwebkitgtk-6.0-dev \
+        libwebkit2gtk-4.1-dev \
+        libappindicator3-dev \
         libadwaita-1-dev \
         libgtk-3-dev \
         libglib2.0-dev \
@@ -132,11 +274,11 @@ verify_dependencies() {
     
     local missing=0
     
-    # Verifica WebKit6
-    if pkg-config --exists webkitgtk-6.0 2>/dev/null; then
-        success "✓ webkitgtk6.0-devel instalado"
+    # Verifica WebKit 4.1
+    if pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
+        success "✓ webkit2gtk-4.1 instalado"
     else
-        error "✗ webkitgtk6.0-devel NÃO encontrado"
+        error "✗ webkit2gtk-4.1 NÃO encontrado"
         ((missing++))
     fi
     
@@ -162,20 +304,6 @@ verify_dependencies() {
     else
         error "✗ gobject-introspection-devel NÃO encontrado"
         ((missing++))
-    fi
-    
-    # Verifica se WebKit4.1 foi removido (aviso se ainda presente)
-    if pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
-        warn "⚠️  webkit2gtk-4.1-devel ainda está instalado (pode causar conflitos)"
-    else
-        success "✓ webkit2gtk-4.1-devel removido com sucesso"
-    fi
-    
-    # Verifica se libappindicator foi removido (aviso se ainda presente)
-    if pkg-config --exists appindicator3-0.1 2>/dev/null; then
-        warn "⚠️  libappindicator3-dev ainda está instalado (pode causar conflitos)"
-    else
-        success "✓ libappindicator-gtk3-devel removido com sucesso"
     fi
     
     if [ $missing -eq 0 ]; then
@@ -276,8 +404,20 @@ EOF
 
 # ── Menu Principal ────────────────────────────────────────────────────────────
 main() {
+    local action="${1:-install}"
+
+    case "$action" in
+        install|remove) ;;
+        *)
+            error "Ação inválida: '$action'"
+            error "Uso: $0 [install|remove]  (padrão: install)"
+            exit 1
+            ;;
+    esac
+
     log "═══ Setup de Dependências — Claw Launcher ═══"
     log "Sistema Operacional: $(uname -s)"
+    log "Ação: $action"
     
     local distro=$(detect_distro)
     local pkg_manager=$(detect_package_manager)
@@ -286,34 +426,47 @@ main() {
     log "Gerenciador de pacotes: $pkg_manager"
     echo ""
     
-    # Redireciona para instalação apropriada
-    case "$pkg_manager" in
-        rpm-ostree)
-            setup_fedora_rpm_ostree
-            ;;
-        dnf)
-            setup_fedora_dnf
-            ;;
-        apt-get)
-            setup_debian
-            ;;
-        *)
-            error "Gerenciador de pacotes não suportado: $pkg_manager"
-            error "Instale manualmente:"
-            error "  • webkitgtk6.0-devel (ou libwebkitgtk-6.0-dev)"
-            error "  • libadwaita-devel (ou libadwaita-1-dev)"
-            return 1
-            ;;
-    esac
-    
-    echo ""
-    verify_dependencies
-    
-    echo ""
-    setup_pkg_config_path
+    if [ "$action" = "install" ]; then
+        # Redireciona para instalação apropriada
+        case "$pkg_manager" in
+            rpm-ostree)
+                setup_fedora_rpm_ostree
+                ;;
+            dnf)
+                setup_fedora_dnf
+                ;;
+            apt-get)
+                setup_debian
+                ;;
+            *)
+                error "Gerenciador de pacotes não suportado: $pkg_manager"
+                error "Instale manualmente:"
+                error "  • webkit2gtk4.1-devel (ou libwebkit2gtk-4.1-dev)"
+                error "  • libadwaita-devel (ou libadwaita-1-dev)"
+                return 1
+                ;;
+        esac
+        
+        echo ""
+        verify_dependencies
+        
+        echo ""
+        setup_pkg_config_path
 
-    echo ""
-    setup_cargo_optimizations
+        echo ""
+        setup_cargo_optimizations
+    else
+        # Ação: remove
+        case "$pkg_manager" in
+            rpm-ostree)
+                teardown_fedora_rpm_ostree
+                ;;
+            *)
+                error "Ação 'remove' não implementada para o gerenciador de pacotes $pkg_manager."
+                exit 1
+                ;;
+        esac
+    fi
 }
 
 # ── Entry Point ───────────────────────────────────────────────────────────────

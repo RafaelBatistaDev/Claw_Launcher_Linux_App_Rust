@@ -7,6 +7,9 @@
 
 set -euo pipefail
 
+# ── Exporta PKG_CONFIG_PATH para WebKit4.1 + Libadwaita (evita falhas de pkg-config) ──
+export PKG_CONFIG_PATH="/usr/lib64/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+
 # ── Cores ─────────────────────────────────────────────────────────────────────
 G="\033[1;32m"; B="\033[1;34m"; Y="\033[1;33m"; R="\033[1;31m"; C="\033[1;36m"; N="\033[0m"
 
@@ -43,13 +46,43 @@ main() {
     rustc --version
     cargo --version
 
-    # Clean (opcional)
-    step "Limpando build anterior..."
-    cd "$PROJECT_DIR"
-    cargo clean
+    # Argumentos
+    local do_clean=false
+    local prompt_clean=true
+
+    for arg in "$@"; do
+        case "$arg" in
+            --clean)
+                do_clean=true
+                prompt_clean=false
+                ;;
+            --no-clean)
+                do_clean=false
+                prompt_clean=false
+                ;;
+        esac
+    done
+
+    if [ "$prompt_clean" = true ]; then
+        if [ -t 0 ]; then
+            read -r -p "Limpar builds antigos antes de compilar? (s/N): " clean_choice
+            if [[ "$clean_choice" =~ ^[Ss]$ ]]; then
+                do_clean=true
+            fi
+        else
+            do_clean=false
+        fi
+    fi
+
+    if [ "$do_clean" = true ]; then
+        step "Limpando build anterior..."
+        cd "$PROJECT_DIR"
+        cargo clean
+    fi
 
     # Build release
     step "Compilando claw-launcher em release..."
+    cd "$PROJECT_DIR"
     cargo build --release
 
     # Verifica se o binário foi criado
@@ -58,12 +91,16 @@ main() {
         chmod +x "$BINARY_PATH"
         success "Build concluído: $BINARY_PATH"
         ls -lh "$BINARY_PATH"
+
+        # Centralização: Executa o instalador para registrar no sistema
+        log "Centralizando: executando instalador para registrar no sistema..."
+        bash "${SCRIPT_DIR}/install.sh" --skip-build --skip-deps
     else
         error "Binário não encontrado: $BINARY_PATH"
         exit 1
     fi
 
-    success "═══ Build finalizado com sucesso! ═══"
+    success "═══ Build e Instalação finalizados com sucesso! ═══"
 }
 
 main "$@"

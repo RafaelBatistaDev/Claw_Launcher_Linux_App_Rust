@@ -8,6 +8,9 @@
 
 set -euo pipefail
 
+# ── Exporta PKG_CONFIG_PATH para WebKit4.1 + Libadwaita (evita falhas de pkg-config) ──
+export PKG_CONFIG_PATH="/usr/lib64/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+
 # ── Cores ─────────────────────────────────────────────────────────────────────
 G="\033[1;32m"; B="\033[1;34m"; Y="\033[1;33m"; R="\033[1;31m"; C="\033[1;36m"; N="\033[0m"
 
@@ -37,198 +40,8 @@ LAUNCHER_BIN="${BIN_DIR}/claw-launcher"
 # ║ Detecção de Sistema e Instalação de Dependências         ║
 # ╚═══════════════════════════════════════════════════════════╝
 
-detect_distro() {
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        echo "$ID"
-    elif [ -f /etc/redhat-release ]; then
-        echo "fedora"
-    elif [ -f /etc/debian_version ]; then
-        echo "debian"
-    else
-        echo "unknown"
-    fi
-}
-
-detect_package_manager() {
-    if command -v rpm-ostree &>/dev/null; then
-        echo "rpm-ostree"
-    elif command -v dnf &>/dev/null; then
-        echo "dnf"
-    elif command -v yum &>/dev/null; then
-        echo "yum"
-    elif command -v apt-get &>/dev/null; then
-        echo "apt-get"
-    else
-        echo "unknown"
-    fi
-}
-
-setup_fedora_rpm_ostree() {
-    log "═══ Configurando dependências para Fedora (rpm-ostree) ═══"
-    
-    step "Removendo webkit2gtk4.1-devel e libappindicator-gtk3-devel..."
-    sudo rpm-ostree uninstall --idempotent \
-        webkit2gtk4.1-devel \
-        libappindicator-gtk3-devel || warn "Pacotes de remoção não encontrados (normal em primeira execução)"
-    
-    step "Instalando dependências de desenvolvimento (WebKit6, Adwaita, GTK3, GLib, Rust)..."
-    sudo rpm-ostree install --idempotent --allow-inactive \
-        webkitgtk6.0-devel \
-        libadwaita-devel \
-        gtk3-devel \
-        glib2-devel \
-        gobject-introspection-devel \
-        libxcb-devel \
-        openssl-devel \
-        rust
-    
-    success "Dependências rpm-ostree configuradas."
-    warn "⚠️  Será necessário reiniciar o sistema para aplicar as mudanças."
-    warn "Execute: sudo systemctl reboot"
-}
-
-setup_fedora_dnf() {
-    log "═══ Configurando dependências para Fedora (dnf) ═══"
-    
-    step "Removendo webkit2gtk4.1-devel e libappindicator-gtk3-devel..."
-    sudo dnf remove -y \
-        webkit2gtk4.1-devel \
-        libappindicator-gtk3-devel || warn "Pacotes de remoção não encontrados"
-    
-    step "Instalando dependências de desenvolvimento (WebKit6, Adwaita, GTK3, GLib, Rust)..."
-    sudo dnf install -y \
-        webkitgtk6.0-devel \
-        libadwaita-devel \
-        gtk3-devel \
-        glib2-devel \
-        gobject-introspection-devel \
-        libxcb-devel \
-        openssl-devel \
-        rust
-    
-    success "Dependências dnf configuradas."
-}
-
-setup_debian() {
-    log "═══ Configurando dependências para Debian/Ubuntu ═══"
-    
-    step "Atualizando índice de pacotes..."
-    sudo apt-get update
-    
-    step "Removendo webkit2gtk4.1-dev e libappindicator3-dev..."
-    sudo apt-get remove -y \
-        webkit2gtk-4.1 \
-        webkit2gtk-4.1-dev \
-        libappindicator3-dev || warn "Pacotes de remoção não encontrados"
-    
-    step "Instalando dependências de desenvolvimento (WebKit6, Adwaita, GTK3, GLib, Rust)..."
-    sudo apt-get install -y \
-        libwebkitgtk-6.0-dev \
-        libadwaita-1-dev \
-        libgtk-3-dev \
-        libglib2.0-dev \
-        gobject-introspection-dev \
-        libxcb1-dev \
-        libssl-dev \
-        rust-all
-    
-    success "Dependências Debian/Ubuntu configuradas."
-}
-
-verify_dependencies() {
-    log "═══ Verificando instalação de dependências ═══"
-    
-    local missing=0
-    
-    # Verifica WebKit6
-    if pkg-config --exists webkitgtk-6.0 2>/dev/null; then
-        success "✓ webkitgtk6.0-devel instalado"
-    else
-        error "✗ webkitgtk6.0-devel NÃO encontrado"
-        ((missing++))
-    fi
-    
-    # Verifica libadwaita
-    if pkg-config --exists libadwaita-1 2>/dev/null; then
-        success "✓ libadwaita-devel instalado"
-    else
-        error "✗ libadwaita-devel NÃO encontrado"
-        ((missing++))
-    fi
-    
-    # Verifica glib2
-    if pkg-config --exists glib-2.0 2>/dev/null; then
-        success "✓ glib2-devel instalado"
-    else
-        error "✗ glib2-devel NÃO encontrado"
-        ((missing++))
-    fi
-    
-    # Verifica gobject-introspection
-    if pkg-config --exists gobject-2.0 2>/dev/null; then
-        success "✓ gobject-introspection-devel instalado"
-    else
-        error "✗ gobject-introspection-devel NÃO encontrado"
-        ((missing++))
-    fi
-    
-    # Verifica se WebKit4.1 foi removido (aviso se ainda presente)
-    if pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
-        warn "⚠️  webkit2gtk-4.1-devel ainda está instalado (pode causar conflitos)"
-    else
-        success "✓ webkit2gtk-4.1-devel removido com sucesso"
-    fi
-    
-    # Verifica se libappindicator foi removido (aviso se ainda presente)
-    if pkg-config --exists appindicator3-0.1 2>/dev/null; then
-        warn "⚠️  libappindicator3-dev ainda está instalado (pode causar conflitos)"
-    else
-        success "✓ libappindicator-gtk3-devel removido com sucesso"
-    fi
-    
-    if [ $missing -eq 0 ]; then
-        success "═══ Todas as dependências estão correctamente instaladas ═══"
-        return 0
-    else
-        error "═══ $missing dependência(s) ausente(s) ═══"
-        return 1
-    fi
-}
-
 setup_system_dependencies() {
-    log "═══ Setup de Dependências — Claw Launcher ═══"
-    log "Sistema Operacional: $(uname -s)"
-    
-    local distro=$(detect_distro)
-    local pkg_manager=$(detect_package_manager)
-    
-    log "Distro detectada: $distro"
-    log "Gerenciador de pacotes: $pkg_manager"
-    echo ""
-    
-    # Redireciona para instalação apropriada
-    case "$pkg_manager" in
-        rpm-ostree)
-            setup_fedora_rpm_ostree
-            ;;
-        dnf)
-            setup_fedora_dnf
-            ;;
-        apt-get)
-            setup_debian
-            ;;
-        *)
-            error "Gerenciador de pacotes não suportado: $pkg_manager"
-            error "Instale manualmente:"
-            error "  • webkitgtk6.0-devel (ou libwebkitgtk-6.0-dev)"
-            error "  • libadwaita-devel (ou libadwaita-1-dev)"
-            return 1
-            ;;
-    esac
-    
-    echo ""
-    verify_dependencies
+    bash "${SCRIPT_DIR}/setup-deps.sh"
 }
 
 # ╔═══════════════════════════════════════════════════════════╗
@@ -281,7 +94,7 @@ build_launcher() {
 
     # Verifica dependências antes de compilar
     log "Verificando dependências antes de compilar..."
-    if ! pkg-config --exists webkitgtk-6.0 libadwaita-1 2>/dev/null; then
+    if ! pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
         warn "⚠️  Dependências do sistema incompletas!"
         read -r -p "Configurar agora? (s/N): " setup_choice
         if [[ "$setup_choice" =~ ^[Ss]$ ]]; then
@@ -291,33 +104,8 @@ build_launcher() {
         fi
     fi
 
-    # ╔═══════════════════════════════════════════════════════════╗
-    # ║ Opção de limpeza antes de compilar                       ║
-    # ╚═══════════════════════════════════════════════════════════╝
-    read -r -p "Limpar builds antigos antes de compilar? (s/N): " clean_choice
-    if [[ "$clean_choice" =~ ^[Ss]$ ]]; then
-        clean_old_builds
-    fi
-
-    step "Compilando claw-launcher (Rust)..."
-    (cd "${LAUNCHER_SRC}/src-tauri" && cargo build --release)
-    
-    mkdir -p "$BIN_DIR"
-    
-    # Faz backup do binário anterior
-    if [ -f "$LAUNCHER_BIN" ]; then
-        cp "$LAUNCHER_BIN" "${LAUNCHER_BIN}.bak"
-        step "Backup anterior salvo em ${LAUNCHER_BIN}.bak"
-    fi
-    
-    # Copia novo binário
-    cp "${LAUNCHER_SRC}/src-tauri/target/release/claw-launcher" "$LAUNCHER_BIN"
-    chmod +x "$LAUNCHER_BIN"
-    success "Instalado em ${LAUNCHER_BIN}"
-    
-    # Instala ícone do claw-launcher no sistema
-    step "Instalando ícone do claw-launcher..."
-    _install_claw_icon
+    # Invoca o script de build centralizado
+    bash "${SCRIPT_DIR}/build.sh"
 }
 
 check_launcher() {
@@ -450,6 +238,11 @@ list_icon_options() {
 }
 
 choose_icon() {
+    # Se stdin não for um terminal (não interativo), retorna falha imediatamente para usar o fallback
+    if [ ! -t 0 ]; then
+        return 1
+    fi
+
     local preferred_icon="$1"
     local icons=()
     if [ -d "${SCRIPT_DIR}/ICON" ]; then
@@ -713,8 +506,8 @@ install_new_instance() {
     fi
 
     # Ícone padrão se nenhum encontrado
-    [ -z "$icon_src" ] && [ -f "${SCRIPT_DIR}/Claw_Launcher_Linux-256.png" ] && \
-        icon_src="${SCRIPT_DIR}/Claw_Launcher_Linux-256.png"
+    [ -z "$icon_src" ] && [ -f "${SCRIPT_DIR}/ICON/claw-launcher.png" ] && \
+        icon_src="${SCRIPT_DIR}/ICON/claw-launcher.png"
 
     log "═══ Criando instância: ${raw_name} ═══"
     log "  APP_ID : ${app_id}"
@@ -786,7 +579,10 @@ install_instance_to_system() {
     # ╚═══════════════════════════════════════════════════════════╝
     if [ -f "${APPS_DIR}/${APP_ID}.desktop" ]; then
         warn "App '${APP_ID}' já está instalado no sistema."
-        read -r -p "Deseja substituir? (s/N): " replace_choice
+        local replace_choice="s"
+        if [ -t 0 ]; then
+            read -r -p "Deseja substituir? (s/N): " replace_choice
+        fi
         if [[ ! "$replace_choice" =~ ^[Ss]$ ]]; then
             warn "Instalação cancelada."
             return 0
@@ -942,7 +738,10 @@ install_instance() {
         local app_id="$opt"
         if [ -f "${APPS_DIR}/${app_id}.desktop" ]; then
             warn "App '${app_id}' já está instalado no sistema!"
-            read -r -p "Deseja reinstalar? (s/N): " reinstall_choice
+            local reinstall_choice="s"
+            if [ -t 0 ]; then
+                read -r -p "Deseja reinstalar? (s/N): " reinstall_choice
+            fi
             if [[ ! "$reinstall_choice" =~ ^[Ss]$ ]]; then
                 warn "Operação cancelada."
                 break
@@ -978,7 +777,10 @@ uninstall_instance() {
 
         step "Limpando dados de usuário..."
         # Opção para limpar dados ao desinstalar
-        read -r -p "Limpar dados/cookies/sessão do app? (s/N): " clean_data
+        local clean_data="n"
+        if [ -t 0 ]; then
+            read -r -p "Limpar dados/cookies/sessão do app? (s/N): " clean_data
+        fi
         if [[ "$clean_data" =~ ^[Ss]$ ]]; then
             clear_app_cache "$app_id"
         else
@@ -988,7 +790,10 @@ uninstall_instance() {
         update_caches
         success "App desinstalado do sistema."
 
-        read -r -p "Deletar também a pasta de origem? (s/N): " del_folder
+        local del_folder="n"
+        if [ -t 0 ]; then
+            read -r -p "Deletar também a pasta de origem? (s/N): " del_folder
+        fi
         if [[ "$del_folder" =~ ^[Ss]$ ]]; then
             rm -rf "$folder"
             removed "${folder}/"
@@ -1122,12 +927,12 @@ check_system_deps() {
     
     local missing=0
     
-    # Verifica WebKit6
-    if ! pkg-config --exists webkitgtk-6.0 2>/dev/null; then
-        warn "✗ webkitgtk6.0-devel NOT FOUND"
+    # Verifica WebKit 4.1
+    if ! pkg-config --exists webkit2gtk-4.1 2>/dev/null; then
+        warn "✗ webkit2gtk-4.1 NOT FOUND"
         ((missing++))
     else
-        success "✓ webkitgtk6.0-devel instalado"
+        success "✓ webkit2gtk-4.1 instalado"
     fi
     
     # Verifica libadwaita

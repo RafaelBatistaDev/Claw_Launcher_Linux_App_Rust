@@ -1,256 +1,122 @@
-# π INΓCIO RΓPIDO - CLAW Launcher v2.2.0
+# 🚀 INÍCIO RÁPIDO - CLAW Launcher
 
-## β‘ 3 Passos para ComeΓ§ar
+Gerenciador e executor de WebApps isolados e otimizados para Linux (Fedora Kinoite, Silverblue, COSMIC, Workstation e distribuições baseadas em Debian/Ubuntu).
 
-### 1οΈβ£ Compilar
+---
+
+## ⚠️ 3 Passos para Começar
+
+### 1️⃣ Instalar Dependências e Compilar
+Execute o script centralizado para configurar dependências do sistema (incluindo WebKit2GTK 4.1, Libadwaita e Rust) e compilar o launcher automaticamente:
+
 ```bash
+# Entre na pasta do projeto e dê permissão de execução
 cd ./Claw_Launcher_Linux_App_Rust-main
 chmod +x *.sh
-./create_app.sh build      # Menu interativo (configura e valida deps automaticamente)
+
+# Execute o instalador completo (configura dependências, compila e instala)
+./install.sh
+```
+# Desistalar tudo
+```bash
+uv run purg_app.py
 ```
 
-# 1. Instalar sccache
-cargo install sccache --locked
+> [!NOTE]
+> Se você estiver no **Fedora Kinoite ou Silverblue (Atomic)**:
+> O script configurará as dependências necessárias no sistema de arquivos imutável do host e instalará o Rust via `rustup`. Se for necessário criar uma nova camada com o `rpm-ostree`, reinicie o sistema antes de continuar.
+>
+> Após reiniciar, você pode executar o build pulando a checagem de dependências:
+> ```bash
+> ./build.sh --skip-deps
+> ```
 
-# 2. Confirmar
-which sccache
+---
 
-# 3.
-mkdir -p ~/.cargo && cat > ~/.cargo/config.toml << 'EOF'
-[target.x86_64-unknown-linux-gnu]
-linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
-
-[build]
-rustc-wrapper = "sccache"
-EOF
-
+### 2️⃣ Criar uma Instância de WebApp
+Você pode criar instâncias personalizadas (fornecendo uma URL de sua preferência) ou usar modelos pré-configurados (como WhatsApp, Notion, YouTube, etc.):
 
 ```bash
-# Kill any cargo or rustc processes running in the background
-pkill -9 cargo
-pkill -9 rustc
-```
-```bash
-#Iniciar
-
-cd ./Claw_Launcher_Linux_App_Rust-main
-claw-launcher
-```
-
-
-PerguntarΓ‘ se deseja limpar builds antigos β Digite `s` para limpar
-
-### 2οΈβ£ Criar InstΓ’ncia
-```bash
+# Menu interativo para gerenciamento e criação
 ./create_app.sh
-# Menu β OpΓ§Γ£o 1 ou 2
-# Escolha URL do site
 ```
 
-Ou direto:
+Ou diretamente via linha de comando:
+
 ```bash
-./create_app.sh preconfigured  # Apps prΓ©-configurados
-./create_app.sh custom         # URL personalizada
-```
+# Criar a partir de modelos pré-configurados
+./create_app.sh preconfigured
 
-### 3οΈβ£ Instalar no Sistema
-```bash
-./create_app.sh install
-```
-
-Pronto! App instalado e acessΓ­vel no menu de aplicativos
-
----
-
-## π Comandos Γteis
-
-### Criar Apps
-```bash
-./create_app.sh custom                          # Criar personalizado
-./create_app.sh preconfigured                   # PrΓ©-configurados
-./create_app.sh create "MeuApp" "https://..." # Via CLI
-```
-
-### Gerenciar InstalaΓ§Γ΅es
-```bash
-./create_app.sh install                         # Instalar
-./create_app.sh uninstall                       # Desinstalar
-./create_app.sh list                            # Listar todos
-```
-
-### Limpeza
-```bash
-./create_app.sh clean                           # Limpar builds
-./create_app.sh build                           # Compilar (com opΓ§Γ£o de limpar)
-```
-### Setup de Dependências (integrado ao create_app.sh)
-```bash
-./create_app.sh                # Opção 10 no menu: Setup de Dependências
-# Configura WebKit6 + Libadwaita automaticamente durante build se necessário
-```
-### CompilaΓ§Γ£o
-```bash
-./create_app.sh build                           # Build + instalar binΓ‘rio
-cd src-tauri && cargo build --release           # Build direto Cargo
-```
-
----
-
-## π Se Algo Der Errado
-
-### Apps Aparecem Duplicados
-β **FIXO!** Script agora detecta e pergunta antes de sobrescrever
-
-### Cookies NΓ£o Persistem
-β **FIXO!** Agora salvos em `~/.local/share/{APP_ID}/webkit/`
-
-Para testar:
-```bash
-./create_app.sh # β OpΓ§Γ£o 6: Limpar cache
-# Escolha app β Cookies serΓ£o removidos
-# Reabra app β DeverΓ‘ estar deslogado
-```
-
-### Links Abrem em Janelas Isoladas
-β **FIXO!** Links agora abrem na mesma janela com comportamento de navegador
-
-### EspaΓ§o em Disco Cheio
-```bash
-./create_app.sh clean     # Remove builds >30 dias (economiza 500MB-1GB)
-```
-
----
-
-## π DocumentaΓ§Γ£o Completa
-
-Se precisa de mais informaΓ§Γ΅es:
-
-| Documento | Assunto |
-|-----------|---------|
-| [RESUMO_FINAL.md](RESUMO_FINAL.md) | VisΓ£o geral de tudo |
-| [CHANGELOG_FIXES.md](CHANGELOG_FIXES.md) | Detalhes tΓ©cnicos |
-| [TEST_GUIDE.sh](TEST_GUIDE.sh) | Testar funcionalidades |
-| [CLEAN_BUILDS_GUIDE.md](CLEAN_BUILDS_GUIDE.md) | Limpeza de builds |
-| [GITIGNORE_GUIDE.md](GITIGNORE_GUIDE.md) | ConfiguraΓ§Γ£o Git |
-
----
-
-## π― Fluxo TΓ­pico de Uso
-
-```
-βββββββββββββββββββββββββββββββββββββββ
-β 1. Clone o repositΓ³rio              β
-βββββββββββββββ¬ββββββββββββββββββββββββ
-              β
-βββββββββββββββββββββββββββββββββββββββ
-β 2. ./create_app.sh build            β
-β    (Compila + Instala binΓ‘rio)      β
-βββββββββββββββ¬ββββββββββββββββββββββββ
-              β
-βββββββββββββββββββββββββββββββββββββββ
-β 3. ./create_app.sh preconfigured    β
-β    (Cria primeira instΓ’ncia)        β
-βββββββββββββββ¬ββββββββββββββββββββββββ
-              β
-βββββββββββββββββββββββββββββββββββββββ
-β 4. ./create_app.sh install          β
-β    (Instala no sistema)             β
-βββββββββββββββ¬ββββββββββββββββββββββββ
-              β
-βββββββββββββββββββββββββββββββββββββββ
-β 5. Procure por "Claw_*" no menu     β
-β    de aplicativos e abra!           β
-βββββββββββββββββββββββββββββββββββββββ
-```
-
----
-
-## πΎ Como Compartilhar Projeto
-
-### Limpar RepositΓ³rio (IMPORTANTE!)
-```bash
-bash cleanup-git.sh
-# β OpΓ§Γ£o 5: Apenas .gitignore (seguro)
-# ou
-# β OpΓ§Γ£o 4: Limpeza completa (se tem histΓ³rico grande)
-
-git add -A
-git commit -m "v2.2.0: .gitignore refatorado"
-git push origin main
-```
-
-### Novo UsuΓ‘rio Clonar
-```bash
-git clone <repo>
-cd CLAW_Launcher_Rust
-./create_app.sh build
+# Criar com uma URL e nome personalizados
 ./create_app.sh custom
 ```
 
-Cada usuΓ‘rio cria suas instΓ’ncias localmente β Nada Γ© compartilhado!
+---
+
+### 3️⃣ Instalar no Menu do Sistema
+Após criar suas instâncias, registre o aplicativo para que ele apareça no menu do seu ambiente gráfico:
+
+```bash
+# Instala todas as instâncias criadas no menu de aplicativos do sistema
+./create_app.sh install
+```
+
+Pronto! Seu WebApp estará disponível no menu do seu sistema de maneira totalmente integrada.
 
 ---
 
-## π ConfirmaΓ§Γ£o: Tudo Funcionando?
+## 🔧 Comandos Úteis
 
-```bash
-# Verificar binΓ‘rio compilado
-ls -lh src-tauri/target/release/claw-launcher
-# Output: claw-launcher (8.3MB) β
+### Gerenciamento de WebApps
+| Comando | Descrição |
+| :--- | :--- |
+| `./create_app.sh custom` | Abre o assistente para criar um WebApp personalizado. |
+| `./create_app.sh preconfigured` | Cria WebApps a partir de presets populares. |
+| `./create_app.sh list` | Lista todas as instâncias ativas no sistema. |
+| `./create_app.sh install` | Instala/registra as instâncias criadas no menu do sistema. |
+| `./create_app.sh uninstall` | Remove as instâncias do menu de aplicações do sistema. |
+| `./create_app.sh clean` | Limpa caches de compilações antigas. |
 
-# Verificar .gitignore
-cat .gitignore | head -20
-# Output: Bem documentado β
+### Build e Instalação do Launcher
+| Comando | Descrição |
+| :--- | :--- |
+| `./build.sh` | Compila o Claw Launcher e o instala em `~/.local/bin/` (re-registra ícone e `.desktop`). |
+| `./build.sh --clean` | Limpa o cache do Cargo antes de iniciar a compilação. |
+| `./build.sh --no-clean` | Ignora a limpeza do cache para acelerar a compilação. |
+| `./install.sh --uninstall` | Desinstala completamente o Claw Launcher do sistema. |
 
-# Listar documentaΓ§Γ£o
-ls -1 *.md cleanup-git.sh
-# Output: 7 arquivos de docs β
+---
 
-# Testar menu
-./create_app.sh
-# Deve mostrar 10 opΓ§Γ΅es (0-9) β
+## 🚀 Fluxo de Trabalho Recomendado
+
+```mermaid
+graph TD
+    A[Clone o Repositório] --> B[./build.sh --no-clean]
+    B --> C[Compilação & Instalação Automática]
+    C --> D[./create_app.sh]
+    D --> E[Escolha Preset ou URL]
+    E --> F[./create_app.sh install]
+    F --> G[Acesse pelo Menu de Aplicativos]
 ```
 
 ---
 
-## π Suporte RΓ‘pido
+## 🛠️ Resolução de Problemas Comuns
 
-**Pergunta:** Como removo um app?
-```bash
-./create_app.sh
-# β OpΓ§Γ£o 4: Desinstalar instΓ’ncia
-```
+### Cookies ou Sessões Não Persistem
+As sessões e cookies são mantidos de forma isolada para cada aplicação. Se precisar limpar o cache e deslogar de um app:
+1. Execute `./create_app.sh`
+2. Selecione a opção **Limpar cache** (Opção 6)
+3. Selecione a instância que deseja reiniciar.
 
-**Pergunta:** Posso mudar a URL de um app?
-```bash
-# Edite instance_NomeApp/instance.conf
-vi instance_NomeApp/instance.conf
-# Mude URL= ...
-# Reinstale: ./create_app.sh install
-```
-
-**Pergunta:** Preciso recompilar. Como nΓ£o deixar arrastando arquivo antigos?
-```bash
-./create_app.sh build
-# β Limpar builds antigos antes de compilar? s
-```
+### Links Abrindo Fora da Janela
+O navegador interno está configurado para gerenciar navegações internas de maneira integrada. Links para domínios externos abrirão no seu navegador padrão do sistema para manter a segurança e isolamento.
 
 ---
 
-## β¨ VersΓ£o
-
-**v2.2.0** - 25 de maio de 2026
-
-MudanΓ§as:
-- β Corrigido: DuplicaΓ§Γ£o de apps
-- β Corrigido: PersistΓͺncia de cookies
-- β Corrigido: Comportamento de links/pop-ups
-- β Adicionado: Limpeza de builds
-- β Refatorado: .gitignore (99% reduΓ§Γ£o)
-
----
-
-π **Pronto para usar!** π
-
-Qualquer dΓΊvida, consulte a documentaΓ§Γ£o completa nos arquivos `.md`
+## 📦 Otimizações de Build (sccache + LLD)
+Para acelerar em até 4x compilações futuras, os scripts de dependências configuram automaticamente o linker rápido `lld` e o cache do compilador `sccache`.
+Se você deseja confirmar que o cache está funcionando:
+```bash
+sccache --show-stats
+```

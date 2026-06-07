@@ -13,6 +13,8 @@ use tauri::Manager;
 
 // ── JS injetado no webapp (comportamento de browser) ─────────────────────────
 
+const DEFAULT_USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 const BROWSER_BEHAVIOR_JS: &str = r#"
     if (window.__CLAW_BROWSER_INJECTED__) return;
     window.__CLAW_BROWSER_INJECTED__ = true;
@@ -22,6 +24,12 @@ const BROWSER_BEHAVIOR_JS: &str = r#"
         if (!link) return;
         const href = link.getAttribute('href');
         if (!href || href === '#' || href.startsWith('javascript:') || href.startsWith('#')) return;
+
+        const target = link.getAttribute('target');
+        if (target === '_blank' || target === '_new') {
+            e.preventDefault();
+            location.href = link.href;
+        }
     }, false);
 
     window.open = function(url, _target, _features) {
@@ -49,7 +57,7 @@ const BROWSER_BEHAVIOR_JS: &str = r#"
     })(HTMLFormElement.prototype.submit);
 
     Object.defineProperty(navigator, 'userAgent', {
-        value: (navigator.__UA__ || 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36') + ' CLAW-Browser/1.0',
+        value: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         writable: false,
         configurable: false,
     });
@@ -72,7 +80,13 @@ fn find_script() -> Result<PathBuf, String> {
         }
     }
 
-    // 3. Pastas de cloud storage conhecidas
+    // 3. Diretório de recursos instalado localmente (~/.local/share/claw-launcher)
+    if let Some(share_dir) = dirs::data_local_dir() {
+        let script = share_dir.join("claw-launcher").join("create_app.sh");
+        if script.exists() { return Ok(script); }
+    }
+
+    // 4. Pastas de cloud storage conhecidas
     if let Some(home) = dirs::home_dir() {
         for cloud in ["GoogleDrive", "OneDrive"] {
             let script = home
@@ -155,10 +169,17 @@ fn list_instances_gui() -> Result<String, String> {
 
 #[tauri::command]
 fn list_icons_gui() -> Result<Vec<String>, String> {
-    let dir = std::env::var("CLAW_SCRIPT_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("."));
-    let icon_dir = dir.join("ICON");
+    let base_dir = match find_script() {
+        Ok(script_path) => script_path.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| PathBuf::from(".")),
+        Err(_) => {
+            if let Ok(dir) = std::env::var("CLAW_SCRIPT_DIR") {
+                PathBuf::from(dir)
+            } else {
+                PathBuf::from(".")
+            }
+        }
+    };
+    let icon_dir = base_dir.join("ICON");
     if !icon_dir.exists() { return Ok(vec![]); }
     let mut icons: Vec<String> = std::fs::read_dir(&icon_dir)
         .map_err(|e| e.to_string())?
@@ -329,15 +350,15 @@ fn main() {
                 window::build_launcher_window(app)?;
             } else {
                 let url    = parsed_url.unwrap();
-                let window = window::build_webapp_window(app, &app_id, &name, url, &profile)?;
-
-                // Injeta comportamento de browser ao focar a janela
-                let window_for_inject = window.clone();
-                window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Focused(true) = event {
-                        let _ = window_for_inject.eval(BROWSER_BEHAVIOR_JS);
-                    }
-                });
+                let window = window::build_webapp_window(
+                    app,
+                    &app_id,
+                    &name,
+                    url,
+                    &profile,
+                    DEFAULT_USER_AGENT,
+                    BROWSER_BEHAVIOR_JS,
+                )?;
 
                 // Restaura tamanho e posição salvos
                 if let Ok(state) = WindowState::load(&profile) {

@@ -28,6 +28,8 @@ pub fn build_webapp_window(
     name: &str,
     url: Url,
     profile_path: &Path,
+    user_agent: &str,
+    init_script: &str,
 ) -> Result<WebviewWindow, tauri::Error> {
     let _ = std::fs::create_dir_all(profile_path);
 
@@ -37,5 +39,7 @@ pub fn build_webapp_window(
         .min_inner_size(640.0, 480.0)
         .resizable(true)
         .fullscreen(false)
+        .user_agent(user_agent)
+        .initialization_script(init_script)
         .build()
 }
