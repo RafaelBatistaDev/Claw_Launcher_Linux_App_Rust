@@ -15,5 +15,4 @@ https://www.youtube.com/?app=desktop
 https://mail.google.com/mail/?authuser=0
 https://onedrive.live.com/?view=0
 https://heliowallet.com/
-https://www.onenote.com/notebookshttps://onenote.cloud.microsoft/
-https://onenote.cloud.microsoft/
+https://onenote.cloud.microsoft/pt-br/

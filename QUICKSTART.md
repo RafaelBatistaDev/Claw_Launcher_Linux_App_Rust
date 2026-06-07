@@ -1,118 +1,256 @@
-# 🚀 INÍCIO RÁPIDO - CLAW Launcher
+# π INΓCIO RΓPIDO - CLAW Launcher v2.2.0
 
-## ⚠️ 3 Passos para Começar
+## β‘ 3 Passos para ComeΓ§ar
 
-### 1️⃣ Compilar e Instalar o App Principal
-O script [build.sh](file:///var/home/recifecrypto/GoogleDrive/Claw_Launcher_Linux_App_Rust-main/build.sh) configura automaticamente as permissões dos scripts, sincroniza as dependências Python usando `uv sync`, limpa builds anteriores e compila o binário otimizado:
+### 1οΈβ£ Compilar
 ```bash
-./build.sh
+cd ./Claw_Launcher_Linux_App_Rust-main
+chmod +x *.sh
+./create_app.sh build      # Menu interativo (configura e valida deps automaticamente)
 ```
 
-### 2️⃣ Criar Instância de Aplicativo Web
-Utilize o assistente para criar uma nova instância (você pode escolher um app pré-configurado ou digitar um link customizado):
+# 1. Instalar sccache
+cargo install sccache --locked
+
+# 2. Confirmar
+which sccache
+
+# 3.
+mkdir -p ~/.cargo && cat > ~/.cargo/config.toml << 'EOF'
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[build]
+rustc-wrapper = "sccache"
+EOF
+
+
+```bash
+# Kill any cargo or rustc processes running in the background
+pkill -9 cargo
+pkill -9 rustc
+```
+```bash
+#Iniciar
+
+cd ./Claw_Launcher_Linux_App_Rust-main
+claw-launcher
+```
+
+
+PerguntarΓ‘ se deseja limpar builds antigos β Digite `s` para limpar
+
+### 2οΈβ£ Criar InstΓ’ncia
 ```bash
 ./create_app.sh
-# Selecione Opção 1 (pré-configurado) ou Opção 2 (customizado)
+# Menu β OpΓ§Γ£o 1 ou 2
+# Escolha URL do site
 ```
 
-Ou chame diretamente:
+Ou direto:
 ```bash
-./create_app.sh preconfigured   # Menu de Apps pré-configurados (OneNote, Instagram, etc)
-./create_app.sh custom          # Criação livre com URL personalizada
+./create_app.sh preconfigured  # Apps prΓ©-configurados
+./create_app.sh custom         # URL personalizada
 ```
 
-### 3️⃣ Instalar Instância no Sistema
-Instale a instância gerada para que ela seja integrada ao seu menu do sistema desktop:
+### 3οΈβ£ Instalar no Sistema
 ```bash
 ./create_app.sh install
 ```
 
-Pronto! O aplicativo estará acessível no menu de aplicativos do seu sistema.
+Pronto! App instalado e acessΓ­vel no menu de aplicativos
 
 ---
 
-## 📌 Comandos Úteis
+## π Comandos Γteis
 
 ### Criar Apps
 ```bash
 ./create_app.sh custom                          # Criar personalizado
-./create_app.sh preconfigured                   # Criar pré-configurado
-./create_app.sh create "MeuApp" "https://..."   # Criação direta via CLI
+./create_app.sh preconfigured                   # PrΓ©-configurados
+./create_app.sh create "MeuApp" "https://..." # Via CLI
 ```
 
-### Gerenciar Instalações
+### Gerenciar InstalaΓ§Γ΅es
 ```bash
-./create_app.sh install                         # Instalar instância criada
-./create_app.sh uninstall                       # Desinstalar instância criada
-./create_app.sh list                            # Listar todas as instâncias
+./create_app.sh install                         # Instalar
+./create_app.sh uninstall                       # Desinstalar
+./create_app.sh list                            # Listar todos
 ```
 
-### Limpeza e Purga
+### Limpeza
 ```bash
-# Limpeza profunda dinâmica: remove binários, atalhos, caches de sessão, venv e builds locais
-uv run purg_app.py
+./create_app.sh clean                           # Limpar builds
+./create_app.sh build                           # Compilar (com opΓ§Γ£o de limpar)
+```
+### Setup de Dependências (integrado ao create_app.sh)
+```bash
+./create_app.sh                # Opção 10 no menu: Setup de Dependências
+# Configura WebKit6 + Libadwaita automaticamente durante build se necessário
+```
+### CompilaΓ§Γ£o
+```bash
+./create_app.sh build                           # Build + instalar binΓ‘rio
+cd src-tauri && cargo build --release           # Build direto Cargo
 ```
 
 ---
 
-## 🚑 Se Algo Der Errado (Resolução de Problemas)
+## π Se Algo Der Errado
 
 ### Apps Aparecem Duplicados
-O instalador agora detecta atalhos duplicados e avisa se você deseja substituir a instalação anterior.
+β **FIXO!** Script agora detecta e pergunta antes de sobrescrever
 
-### Cookies Não Persistem
-As sessões e cookies são salvos e isolados em `~/.local/share/Claw_{APP_ID}/webkit/` garantindo que você permaneça logado.
+### Cookies NΓ£o Persistem
+β **FIXO!** Agora salvos em `~/.local/share/{APP_ID}/webkit/`
 
-Para testar a limpeza:
+Para testar:
+```bash
+./create_app.sh # β OpΓ§Γ£o 6: Limpar cache
+# Escolha app β Cookies serΓ£o removidos
+# Reabra app β DeverΓ‘ estar deslogado
+```
+
+### Links Abrem em Janelas Isoladas
+β **FIXO!** Links agora abrem na mesma janela com comportamento de navegador
+
+### EspaΓ§o em Disco Cheio
+```bash
+./create_app.sh clean     # Remove builds >30 dias (economiza 500MB-1GB)
+```
+
+---
+
+## π DocumentaΓ§Γ£o Completa
+
+Se precisa de mais informaΓ§Γ΅es:
+
+| Documento | Assunto |
+|-----------|---------|
+| [RESUMO_FINAL.md](RESUMO_FINAL.md) | VisΓ£o geral de tudo |
+| [CHANGELOG_FIXES.md](CHANGELOG_FIXES.md) | Detalhes tΓ©cnicos |
+| [TEST_GUIDE.sh](TEST_GUIDE.sh) | Testar funcionalidades |
+| [CLEAN_BUILDS_GUIDE.md](CLEAN_BUILDS_GUIDE.md) | Limpeza de builds |
+| [GITIGNORE_GUIDE.md](GITIGNORE_GUIDE.md) | ConfiguraΓ§Γ£o Git |
+
+---
+
+## π― Fluxo TΓ­pico de Uso
+
+```
+βββββββββββββββββββββββββββββββββββββββ
+β 1. Clone o repositΓ³rio              β
+βββββββββββββββ¬ββββββββββββββββββββββββ
+              β
+βββββββββββββββββββββββββββββββββββββββ
+β 2. ./create_app.sh build            β
+β    (Compila + Instala binΓ‘rio)      β
+βββββββββββββββ¬ββββββββββββββββββββββββ
+              β
+βββββββββββββββββββββββββββββββββββββββ
+β 3. ./create_app.sh preconfigured    β
+β    (Cria primeira instΓ’ncia)        β
+βββββββββββββββ¬ββββββββββββββββββββββββ
+              β
+βββββββββββββββββββββββββββββββββββββββ
+β 4. ./create_app.sh install          β
+β    (Instala no sistema)             β
+βββββββββββββββ¬ββββββββββββββββββββββββ
+              β
+βββββββββββββββββββββββββββββββββββββββ
+β 5. Procure por "Claw_*" no menu     β
+β    de aplicativos e abra!           β
+βββββββββββββββββββββββββββββββββββββββ
+```
+
+---
+
+## πΎ Como Compartilhar Projeto
+
+### Limpar RepositΓ³rio (IMPORTANTE!)
+```bash
+bash cleanup-git.sh
+# β OpΓ§Γ£o 5: Apenas .gitignore (seguro)
+# ou
+# β OpΓ§Γ£o 4: Limpeza completa (se tem histΓ³rico grande)
+
+git add -A
+git commit -m "v2.2.0: .gitignore refatorado"
+git push origin main
+```
+
+### Novo UsuΓ‘rio Clonar
+```bash
+git clone <repo>
+cd CLAW_Launcher_Rust
+./create_app.sh build
+./create_app.sh custom
+```
+
+Cada usuΓ‘rio cria suas instΓ’ncias localmente β Nada Γ© compartilhado!
+
+---
+
+## π ConfirmaΓ§Γ£o: Tudo Funcionando?
+
+```bash
+# Verificar binΓ‘rio compilado
+ls -lh src-tauri/target/release/claw-launcher
+# Output: claw-launcher (8.3MB) β
+
+# Verificar .gitignore
+cat .gitignore | head -20
+# Output: Bem documentado β
+
+# Listar documentaΓ§Γ£o
+ls -1 *.md cleanup-git.sh
+# Output: 7 arquivos de docs β
+
+# Testar menu
+./create_app.sh
+# Deve mostrar 10 opΓ§Γ΅es (0-9) β
+```
+
+---
+
+## π Suporte RΓ‘pido
+
+**Pergunta:** Como removo um app?
 ```bash
 ./create_app.sh
-# Vá na Opção 6 (Limpar Cache) -> Escolha o App -> Os cookies serão removidos.
+# β OpΓ§Γ£o 4: Desinstalar instΓ’ncia
 ```
 
-### Espaço em Disco Muito Alto
-A compilação do Rust gera muitos arquivos temporários em `src-tauri/target/`. Use o utilitário de purga para limpar tudo:
+**Pergunta:** Posso mudar a URL de um app?
 ```bash
-uv run purg_app.py
+# Edite instance_NomeApp/instance.conf
+vi instance_NomeApp/instance.conf
+# Mude URL= ...
+# Reinstale: ./create_app.sh install
+```
+
+**Pergunta:** Preciso recompilar. Como nΓ£o deixar arrastando arquivo antigos?
+```bash
+./create_app.sh build
+# β Limpar builds antigos antes de compilar? s
 ```
 
 ---
 
-## 🗺️ Fluxo Típico de Uso
+## β¨ VersΓ£o
 
-```
-┌──────────────────────────────────────┐
-│ 1. Clone o repositório               │
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────┐
-│ 2. Executar ./build.sh               │
-│    (Configura env, compila e instala)│
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────┐
-│ 3. Executar ./create_app.sh          │
-│    (Cria a instância de WebApp)      │
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────┐
-│ 4. Executar ./create_app.sh install  │
-│    (Registra atalho e ícone)         │
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────┐
-│ 5. Abra "Claw_*" no seu menu de apps │
-└──────────────────────────────────────┘
-```
+**v2.2.0** - 25 de maio de 2026
+
+MudanΓ§as:
+- β Corrigido: DuplicaΓ§Γ£o de apps
+- β Corrigido: PersistΓͺncia de cookies
+- β Corrigido: Comportamento de links/pop-ups
+- β Adicionado: Limpeza de builds
+- β Refatorado: .gitignore (99% reduΓ§Γ£o)
 
 ---
 
-## ✨ Versão
-**v2.3.0**
-- ✅ Corrigido: Inicialização de ícones internos na tela inicial do Launcher Tauri.
-- ✅ Adicionado: Script de purga profunda (`purg_app.py`) integrando remoção automática de `.venv/` e `uv.lock`.
-- ✅ Refatorado: `build.sh` agora sincroniza o ambiente Python via `uv sync` e ajusta as permissões locais.
-- ✅ Corrigido: Quebra de caracteres e codificação na documentação.
+π **Pronto para usar!** π
+
+Qualquer dΓΊvida, consulte a documentaΓ§Γ£o completa nos arquivos `.md`

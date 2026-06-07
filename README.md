@@ -1,12 +1,5 @@
 # 🚀 Claw Launcher
 
-sudo rpm-ostree upgrade
-
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source ~/.cargo/env
-
-./build.sh
-
 **Claw Launcher** é um motor de execução de WebApps de alto desempenho, desenvolvido em **Rust** com **Tauri 2.0**. Ele foi projetado especificamente para sistemas Linux modernos (como Fedora Kinoite/Silverblue), oferecendo uma experiência nativa para aplicações web com isolamento total de dados e gerenciamento eficiente de recursos.
 <p align="center">
    <img src="PNG/1.png" width="100%" />
@@ -353,16 +346,7 @@ O script `create_app.sh` gerencia a compilação automaticamente:
 
 1. Opção menu: **8. Compilar e instalar claw-launcher (Rust)**
 2. Chamada automática em `install_new_instance` e `create_preconfigured_app`
-3. Funciona de forma idempotente: verifica se o binário existe antes de compilar
-
-## Ferramentas de Manutenção e Purga
-
-O repositório disponibiliza utilitários dedicados de manutenção:
-
-1. **Instalação Rápida ([build.sh](file:///var/home/recifecrypto/GoogleDrive/Claw_Launcher_Linux_App_Rust-main/build.sh))**:
-   - Executa `chmod +x` em scripts locais, sincroniza o ambiente Python com `uv sync`, executa `cargo clean`, compila em release e instala o binário, atalho `.desktop` e ícones do sistema.
-2. **Purga e Desinstalação ([purg_app.py](file:///var/home/recifecrypto/GoogleDrive/Claw_Launcher_Linux_App_Rust-main/purg_app.py))**:
-   - Varre o `PATH` e diretórios XDG para desinstalar o launcher por completo e limpa as pastas de build (`src-tauri/target/`), ambientes virtuais (`.venv/`, `venv/`) e arquivos de trava (`uv.lock`).
+3. Funciona idempotente: verifica se binário existe antes de compilar
 
 ## Arquivo .desktop Gerado
 

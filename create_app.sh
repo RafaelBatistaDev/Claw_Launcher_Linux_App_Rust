@@ -315,10 +315,6 @@ build_launcher() {
     chmod +x "$LAUNCHER_BIN"
     success "Instalado em ${LAUNCHER_BIN}"
     
-    # Salva o caminho do repositório para o launcher encontrar os ícones/scripts
-    mkdir -p "${REAL_HOME}/.config/claw-launcher"
-    echo "${SCRIPT_DIR}" > "${REAL_HOME}/.config/claw-launcher/repo_path.txt"
-    
     # Instala ícone do claw-launcher no sistema
     step "Instalando ícone do claw-launcher..."
     _install_claw_icon
@@ -362,10 +358,6 @@ get_instances() {
 
 generate_unique_app_id() {
     local base_id="$1"
-    if [ "$base_id" = "Claw_OneNote" ]; then
-        echo "Claw_OneNote"
-        return
-    fi
     local candidate="$base_id"
     local index=1
     while [ -d "${SCRIPT_DIR}/instance_${candidate}" ]; do
@@ -516,7 +508,7 @@ install_icons() {
 
 # Mapeamento de links com ícones e nomes descritivos
 declare -A LINK_MAP=(
-    ["https://www.onenote.com/notebooks"]="OneNote:onenote"
+    ["https://onenote.cloud.microsoft/pt-br/"]="OneNote:onenote"
     ["https://vscode.dev/?vscode-lang=pt-br"]="VSCode:vscode"
     ["https://gemini.google.com/app?hl=pt-BR"]="Gemini:Gemini"
     ["https://claude.ai/new"]="Claude:claudecode"
@@ -557,7 +549,7 @@ list_link_options() {
         echo "https://mail.google.com/mail/?authuser=0"
         echo "https://onedrive.live.com/?view=0"
         echo "https://heliowallet.com/"
-        echo "https://www.onenote.com/notebooks"
+        echo "https://onenote.cloud.microsoft/pt-br/"
 
         if [ -f "$list_file" ]; then
             grep -Eo '^https?://[^[:space:]]+' "$list_file"
@@ -642,7 +634,7 @@ guess_app_name_from_url() {
         *myetherwallet.com*)       echo "MyEtherWallet" ;;
         *heliowallet.com*)         echo "HelioWallet" ;;
         *etherscan.io*)            echo "Etherscan" ;;
-        *onenote.cloud.microsoft*|*onenote.com*) echo "OneNote" ;;
+        *onenote.cloud.microsoft*) echo "OneNote" ;;
         *) echo "$host" | sed -E 's/[^a-zA-Z0-9]+/ /g; s/^ //; s/ $//' ;;
     esac
 }
@@ -669,7 +661,7 @@ guess_icon_name_from_url() {
         *myetherwallet.com*)       echo "myetherwallet" ;;
         *heliowallet.com*)         echo "HelioWallet" ;;
         *etherscan.io*)            echo "etherscan" ;;
-        *onenote.cloud.microsoft*|*onenote.com*) echo "onenote" ;;
+        *onenote.cloud.microsoft*) echo "onenote" ;;
         *) echo "$host" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g' ;;
     esac
 }
@@ -831,12 +823,11 @@ install_instance_to_system() {
     local cache_dir="${REAL_HOME}/.cache/${APP_ID}"
     
     step "Inicializando estrutura de persistência..."
-    mkdir -p "${data_dir}/webkit/cookies"
+    mkdir -p "${data_dir}/webkit"
     mkdir -p "${data_dir}/storage"
     mkdir -p "${cache_dir}/webkit"
     mkdir -p "${cache_dir}/http"
-    mkdir -p "${cache_dir}/cookies"
-    success "Diretórios de armazenamento e cookies criados."
+    success "Diretórios de armazenamento criados."
 
     update_caches
     success "═══ ${APP_NAME} instalado com sucesso ═══"
@@ -1080,7 +1071,7 @@ manage_onenote() {
         fi
     else
         log "═══ Instalação Expressa: OneNote ═══"
-        install_new_instance "OneNote" "https://www.onenote.com/notebooks" "onenote"
+        install_new_instance "OneNote" "https://onenote.cloud.microsoft/pt-br/" "onenote"
         [ -n "$LAST_CREATED_FOLDER" ] && install_instance_to_system "${SCRIPT_DIR}/${LAST_CREATED_FOLDER}"
     fi
 }
@@ -1188,11 +1179,6 @@ _build_silent() {
     cp "${LAUNCHER_SRC}/src-tauri/target/release/claw-launcher" "$LAUNCHER_BIN"
     chmod +x "$LAUNCHER_BIN"
     success "Instalado em ${LAUNCHER_BIN}"
-    
-    # Salva o caminho do repositório para o launcher encontrar os ícones/scripts
-    mkdir -p "${REAL_HOME}/.config/claw-launcher"
-    echo "${SCRIPT_DIR}" > "${REAL_HOME}/.config/claw-launcher/repo_path.txt"
-    
     _install_claw_icon
 }
 

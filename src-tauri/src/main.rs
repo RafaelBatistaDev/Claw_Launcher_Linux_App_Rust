@@ -14,33 +14,27 @@ use base64::Engine;
 // ── Helpers internos ──────────────────────────────────────────────────────────
 
 fn find_script() -> Result<PathBuf, String> {
+    // 1. Tenta usar CLAW_SCRIPT_DIR (environment var)
     if let Ok(dir) = std::env::var("CLAW_SCRIPT_DIR") {
         let script = PathBuf::from(&dir).join("create_app.sh");
-        if script.exists() { return Ok(script); }
-    }
-    
-    let home = std::env::var("HOME").unwrap_or_default();
-    if !home.is_empty() {
-        let config_file = PathBuf::from(&home).join(".config/claw-launcher/repo_path.txt");
-        if config_file.exists() {
-            if let Ok(content) = std::fs::read_to_string(&config_file) {
-                let repo_dir = PathBuf::from(content.trim());
-                let script = repo_dir.join("create_app.sh");
-                if script.exists() { return Ok(script); }
-            }
+        if script.exists() {
+            return Ok(script);
         }
     }
-
+    
+    // 2. Tenta encontrar na mesma pasta do executável
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
             let script = dir.join("create_app.sh");
-            if script.exists() { return Ok(script); }
+            if script.exists() {
+                return Ok(script);
+            }
         }
     }
     
+    // 3. Tenta procurar em locais comuns (GoogleDrive ou OneDrive)
+    let home = std::env::var("HOME").unwrap_or_default();
     let common_paths = vec![
-        PathBuf::from(&home).join("GoogleDrive/Claw_Launcher_Linux_App_Rust-main/create_app.sh"),
-        PathBuf::from(&home).join("OneDrive/Claw_Launcher_Linux_App_Rust-main/create_app.sh"),
         PathBuf::from(&home).join("GoogleDrive/App-Prontos/Claw_Launcher_Linux_App_Rust-main/create_app.sh"),
         PathBuf::from(&home).join("OneDrive/App-Prontos/Claw_Launcher_Linux_App_Rust-main/create_app.sh"),
         PathBuf::from("/opt/claw-launcher/create_app.sh"),
@@ -49,7 +43,9 @@ fn find_script() -> Result<PathBuf, String> {
     
     for path in common_paths {
         if path.exists() {
-            if path.parent().is_some() { return Ok(path); }
+            if path.parent().is_some() {
+                return Ok(path);
+            }
         }
     }
     
@@ -90,6 +86,7 @@ fn run_sh(args: &[&str]) -> Result<String, String> {
 
 // ── Comandos Tauri ────────────────────────────────────────────────────────────
 
+/// Spawna nova instância webapp (modo CLI original)
 #[tauri::command]
 fn launch_app(url: String, app_id: String, name: String) -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
@@ -100,16 +97,19 @@ fn launch_app(url: String, app_id: String, name: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Verifica se o script está acessível
 #[tauri::command]
 fn script_available() -> bool {
     find_script().is_ok()
 }
 
+/// Lista instâncias criadas em formato JSON
 #[tauri::command]
 fn list_instances_gui() -> Result<String, String> {
     run_sh(&["list-json"])
 }
 
+/// Lista ícones disponíveis na pasta ICON/
 #[tauri::command]
 fn list_icons_gui() -> Result<Vec<String>, String> {
     let dir = std::env::var("CLAW_SCRIPT_DIR")
@@ -131,6 +131,7 @@ fn list_icons_gui() -> Result<Vec<String>, String> {
     Ok(icons)
 }
 
+/// Retorna o conteúdo de um ícone em Base64 para exibição no frontend
 #[tauri::command]
 fn get_icon_base64(name: String) -> Result<String, String> {
     let script = find_script()?;
@@ -138,6 +139,7 @@ fn get_icon_base64(name: String) -> Result<String, String> {
         .ok_or("Erro ao localizar pasta pai")?
         .join("ICON");
 
+    // Tenta múltiplas extensões
     let extensions = vec!["png", "jpg", "jpeg", "svg"];
     let mut icon_path = None;
     
@@ -150,12 +152,17 @@ fn get_icon_base64(name: String) -> Result<String, String> {
     }
 
     let icon_path = icon_path.ok_or(format!(
-        "Ícone '{}' não encontrado em {:?}.", name, icon_dir
+        "Ícone '{}' não encontrado em {:?}. Extensões esperadas: {:?}",
+        name, icon_dir, extensions
     ))?;
 
-    let bytes = std::fs::read(&icon_path).map_err(|e| e.to_string())?;
+    let bytes = std::fs::read(&icon_path).map_err(|e| {
+        format!("Erro ao ler ícone {:?}: {}", icon_path, e)
+    })?;
+    
     let base64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
     
+    // Detecta MIME type pela extensão
     let mime_type = icon_path
         .extension()
         .and_then(|ext| ext.to_str())
@@ -171,11 +178,13 @@ fn get_icon_base64(name: String) -> Result<String, String> {
     Ok(format!("data:{};base64,{}", mime_type, base64))
 }
 
+/// Cria e instala app (equivale às opções 1 e 2)
 #[tauri::command]
 fn create_app_gui(name: String, url: String, icon: String) -> Result<String, String> {
     run_sh(&["create-install", &name, &url, &icon])
 }
 
+/// Desinstala instância (opção 4)
 #[tauri::command]
 fn uninstall_app_gui(app_id: String, clean_data: bool, del_folder: bool) -> Result<String, String> {
     run_sh(&[
@@ -185,11 +194,13 @@ fn uninstall_app_gui(app_id: String, clean_data: bool, del_folder: bool) -> Resu
     ])
 }
 
+/// Limpa cache de instância (opção 6)
 #[tauri::command]
 fn clear_cache_gui(app_id: String) -> Result<String, String> {
     run_sh(&["clear-cache-id", &app_id])
 }
 
+/// Gerencia OneNote — instala se ausente, remove se presente (opção 7)
 #[tauri::command]
 fn manage_onenote_gui() -> Result<String, String> {
     let home = std::env::var("HOME").unwrap_or_default();
@@ -197,40 +208,36 @@ fn manage_onenote_gui() -> Result<String, String> {
     if std::path::Path::new(&desktop).exists() {
         run_sh(&["uninstall-id", "Claw_OneNote", "n", "n"])
     } else {
-        run_sh(&["create-install", "OneNote", "https://onenote.cloud.microsoft/", "onenote"])
+        run_sh(&["create-install", "OneNote",
+                 "https://onenote.cloud.microsoft/pt-br/", "onenote"])
     }
 }
 
+/// Verifica se OneNote está instalado
 #[tauri::command]
 fn onenote_installed() -> bool {
     let home = std::env::var("HOME").unwrap_or_default();
-    std::path::Path::new(&format!("{}/.local/share/applications/Claw_OneNote.desktop", home)).exists()
+    std::path::Path::new(&format!(
+        "{}/.local/share/applications/Claw_OneNote.desktop", home
+    )).exists()
 }
 
+/// Compila e instala o binário (opção 8)
 #[tauri::command]
 fn build_gui() -> Result<String, String> {
     run_sh(&["build-silent"])
 }
 
+/// Limpa builds antigos (opção 9)
 #[tauri::command]
 fn clean_builds_gui() -> Result<String, String> {
     run_sh(&["clean"])
 }
 
+/// Purga tudo (opção 10)
 #[tauri::command]
 fn purge_all_gui() -> Result<String, String> {
     run_sh(&["purge-force"])
-}
-
-#[tauri::command]
-fn load_microsoft_session() -> Option<profile::SessaoMicrosoft> {
-    profile::carregar_sessao_local().ok()
-}
-
-#[tauri::command]
-fn save_microsoft_session(sessao: profile::SessaoMicrosoft) -> Result<(), String> {
-    profile::log_autenticacao("Salvando nova sessão de autenticação no disco...");
-    profile::salvar_sessao_local(&sessao).map_err(|e| e.to_string())
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -239,15 +246,13 @@ fn main() {
     let args = Args::parse();
     let is_gui = args.is_gui_mode();
 
-    let profile_path = args.profile_path();
-    let cache_path   = args.cache_path();
-
     if !is_gui {
-        // CORREÇÃO 1: Vinculação precisa sem truncamento por parent(). 
-        // Garante isolamento estrito de sandbox por App ID no WebKitGTK.
-        std::env::set_var("XDG_DATA_HOME", &profile_path);
-        std::env::set_var("XDG_CACHE_HOME", &cache_path);
-        
+        let profile_path = args.profile_path();
+        let cache_path   = args.cache_path();
+        std::env::set_var("XDG_DATA_HOME",
+            profile_path.parent().unwrap_or_else(|| std::path::Path::new(&profile_path)));
+        std::env::set_var("XDG_CACHE_HOME",
+            cache_path.parent().unwrap_or_else(|| std::path::Path::new(&cache_path)));
         if let Err(e) = WindowState::init_directories(&profile_path, &cache_path) {
             eprintln!("Erro ao inicializar diretórios: {}", e);
             std::process::exit(1);
@@ -265,6 +270,7 @@ fn main() {
 
     let app_id  = args.app_id.clone().unwrap_or_default();
     let name    = args.name.clone().unwrap_or_default();
+    let profile = args.profile_path();
 
     let parsed_url: Option<url::Url> = if !is_gui {
         match args.url.as_ref().unwrap().parse() {
@@ -302,37 +308,62 @@ fn main() {
             if is_gui {
                 window::build_launcher_window(app)?;
             } else {
-                let app_id_lower = app_id.to_lowercase();
-                let processar_auth = app_id_lower.contains("onenote") 
-                    || app_id_lower.contains("onedrive")
-                    || dirs::home_dir()
-                        .map(|h| h.join(".claw").join("cache").join("semantic_cache.json").exists())
-                        .unwrap_or(false);
+                let url = parsed_url.unwrap();
+                let window = window::build_webapp_window(app, &app_id, &name, url, &profile)?;
 
-                if processar_auth {
-                    profile::log_autenticacao(&format!("Iniciando aplicativo ID: {}. Verificando sessão local...", app_id));
-                    if let Ok(sessao) = profile::carregar_sessao_local() {
-                        if profile::s_expirou(&sessao) {
-                            match profile::renovar_sessao_silenciosa(&sessao) {
-                                Ok(nova_sessao) => {
-                                    if let Err(e) = profile::salvar_sessao_local(&nova_sessao) {
-                                        profile::log_autenticacao(&format!("Erro ao salvar sessão local: {}", e));
-                                    }
-                                }
-                                Err(e) => {
-                                    profile::log_autenticacao(&format!("Renovação silenciosa falhou: {}. Login interativo necessário.", e));
+                let window_shortcuts = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::Focused(true) = event {
+                        let inject_browser_behavior = r##"
+                        if (window.__CLAW_BROWSER_INJECTED__) return;
+                        window.__CLAW_BROWSER_INJECTED__ = true;
+                        
+                        document.addEventListener('click', function(e) {
+                            const link = e.target.closest('a[href]');
+                            if (!link) return;
+                            const href = link.getAttribute('href');
+                            if (!href || href === '#' || href.startsWith('javascript:')) return;
+                            if (href.startsWith('#')) return;
+                        }, false);
+                        
+                        const originalWindowOpen = window.open;
+                        window.open = function(url, target, features) {
+                            if (!url) return null;
+                            if (!url.startsWith('http') && !url.startsWith('//') && 
+                                !url.startsWith('data:') && !url.startsWith('blob:')) {
+                                try {
+                                    url = new URL(url, location.origin).href;
+                                } catch (e) {
+                                    url = location.href;
                                 }
                             }
-                        } else {
-                            profile::log_autenticacao("Sessão local válida.");
-                        }
+                            location.href = url;
+                            return null;
+                        };
+                        
+                        const originalFormSubmit = HTMLFormElement.prototype.submit;
+                        HTMLFormElement.prototype.submit = function() {
+                            const target = this.getAttribute('target');
+                            if (target === '_blank' || target === '_new') {
+                                this.removeAttribute('target');
+                                originalFormSubmit.call(this);
+                                this.setAttribute('target', target);
+                                return;
+                            }
+                            originalFormSubmit.call(this);
+                        };
+                        
+                        Object.defineProperty(navigator, 'userAgent', {
+                            value: (navigator.__UA__ || 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36') + ' CLAW-Browser/1.0',
+                            writable: false,
+                            configurable: false
+                        });
+                        "##;
+                        let _ = window_shortcuts.eval(inject_browser_behavior);
                     }
-                }
+                });
 
-                let url = parsed_url.unwrap();
-                let window = window::build_webapp_window(app, &app_id, &name, url, &profile_path)?;
-
-                if let Ok(state) = WindowState::load(&profile_path) {
+                if let Ok(state) = WindowState::load(&profile) {
                     let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
                         width: state.width as u32, height: state.height as u32,
                     }));
@@ -343,18 +374,13 @@ fn main() {
                     }
                 }
 
-                let profile_close = profile_path.clone();
+                let profile_close = profile.clone();
                 let window_clone  = window.clone();
-                
-                // CORREÇÃO 2: Unificação síncrona real de fechamento e flush de memória
                 window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { api: _api, .. } = event {
-                        // Força a execução imediata do flush javascript de tokens capturados antes da janela sumir
-                        let _ = window_clone.eval("if(typeof window.__CLAW_FLUSH_SESSAO__ === 'function') { window.__CLAW_FLUSH_SESSAO__(); }");
-                        
-                        // Consolida o estado de geometria
+                    if let tauri::WindowEvent::CloseRequested { .. } = event {
                         if let Ok(size) = window_clone.inner_size() {
-                            let pos = window_clone.outer_position().unwrap_or(tauri::PhysicalPosition { x: 0, y: 0 });
+                            let pos = window_clone.outer_position()
+                                .unwrap_or(tauri::PhysicalPosition { x: 0, y: 0 });
                             let _ = WindowState {
                                 width: size.width as f64, height: size.height as f64,
                                 x: pos.x, y: pos.y,
@@ -379,8 +405,6 @@ fn main() {
             build_gui,
             clean_builds_gui,
             purge_all_gui,
-            load_microsoft_session,
-            save_microsoft_session,
         ])
         .build(tauri::generate_context!())
         .expect("Erro ao construir aplicativo")
