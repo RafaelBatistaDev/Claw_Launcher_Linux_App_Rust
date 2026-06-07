@@ -291,28 +291,28 @@ let scriptAvailable = false;
 
 const log = (msg, err=false) => {
   const el = document.getElementById('log');
+  if (!el) return;
   el.textContent += (err ? '[ERRO] ' : '') + msg + '\n';
   el.scrollTop = el.scrollHeight;
 };
 
 async function run(cmd, args = {}) {
-  // Verifica script na primeira vez
   if (!scriptChecked) {
     try {
       scriptAvailable = await invoke('script_available');
       scriptChecked = true;
       if (!scriptAvailable) {
-        log('AVISO - Script nao encontrado. Some features will not work.', true);
+        log('AVISO - Script create_app.sh não encontrado.', true);
       }
     } catch(e) {
-      log('AVISO - Nao conseguiu verificar script', true);
+      log('AVISO - Não foi possível verificar o script backend.', true);
       scriptChecked = true;
       return null;
     }
   }
   
-  if (!scriptAvailable) {
-    return null; // Silenciosamente retorna null se script não está disponível
+  if (!scriptAvailable && cmd !== 'script_available') {
+    return null;
   }
   
   try {
@@ -321,7 +321,7 @@ async function run(cmd, args = {}) {
     return out;
   } catch(e) {
     const msg = String(e);
-    if (!msg.includes('Inicie via ./create_app.sh')) {
+    if (!msg.includes('create_app.sh')) {
       log(msg, true);
     }
     throw e;
@@ -335,14 +335,14 @@ const panes = ['preconfigured','custom','install','uninstall',
 function show(id) {
   const content = document.querySelector('.content');
   panes.forEach(p => {
-    document.getElementById('pane-'+p).style.display = p===id ? '' : 'none';
+    const el = document.getElementById('pane-'+p);
+    if (el) el.style.display = p===id ? '' : 'none';
   });
   document.querySelectorAll('nav button').forEach((b,i) => {
     b.classList.toggle('active', panes[i]===id);
   });
-  // Scroll para topo
   if (content) content.scrollTop = 0;
-  // Carrega dados ao abrir painel
+  
   if (id === 'preconfigured') renderPreset();
   if (id === 'install' || id === 'uninstall' || id === 'cache' || id === 'list') loadInstances(id);
   if (id === 'onenote')   loadOneNote();
@@ -352,6 +352,7 @@ function show(id) {
 // ── 1. Pré-configurado ────────────────────────────────────────────────────────
 function renderPreset() {
   const grid = document.getElementById('preset-grid');
+  if (!grid) return;
   grid.innerHTML = PRESET.map((p, i) =>
     `<div class="card" onclick="doPreset(${i})" id="card-${i}">
        <div class="card-icon" id="icon-${i}">
@@ -362,37 +363,32 @@ function renderPreset() {
      </div>`
   ).join('');
 
-  // Carrega as imagens via Rust em background
   PRESET.forEach(async (p, i) => {
     try {
       const b64 = await invoke('get_icon_base64', { name: p.icon });
       const container = document.getElementById(`icon-${i}`);
       if (container && b64) {
-        // Garante que a base64 tem o prefixo data: URI correto
         const imgSrc = b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
         container.innerHTML = `<img src="${imgSrc}" alt="${p.name}" style="width:24px;height:24px;object-fit:contain;display:block;margin:0 auto;" />`;
       }
     } catch (e) {
-      console.warn(`Erro ao carregar ícone ${p.icon}:`, e);
-      /* Mantém o placeholder se falhar */
+      console.warn(`Erro ao renderizar ícone ${p.icon}:`, e);
     }
   });
 }
 
 async function doPreset(i) {
   const p = PRESET[i];
-  log(`Criando ${p.name}...`);
+  log(`Criando e registrando ${p.name}...`);
   try {
     await run('create_app_gui', { name: p.name, url: p.url, icon: p.icon });
-  } catch(e) {
-    // Silenciosamente falha se script não está disponível
-  }
+  } catch(e) { /* Fallback silencioso */ }
 }
 
 // ── 2. Personalizado ──────────────────────────────────────────────────────────
 async function loadIcons() {
   const sel = document.getElementById('c-icon');
-  if (!scriptAvailable && scriptChecked) return; // Skip se script não disponível
+  if (!sel || (!scriptAvailable && scriptChecked)) return;
   try {
     const icons = await invoke('list_icons_gui');
     sel.innerHTML = '<option value="">-- Nenhum --</option>' +
@@ -405,13 +401,13 @@ async function doCustom() {
   const url = document.getElementById('c-url').value.trim();
   const icon = document.getElementById('c-icon').value;
   if (!name || !url) { log('Nome e URL obrigatórios', true); return; }
-  log(`Criando ${name}...`);
+  log(`Criando app personalizado ${name}...`);
   await run('create_app_gui', { name, url, icon });
 }
 
 // ── 3-6. Instâncias, Desinstalar, Cache, Listar ────────────────────────────────
 async function loadInstances(pane) {
-  if (!scriptAvailable && scriptChecked) return; // Skip se script não disponível
+  if (!scriptAvailable && scriptChecked) return;
   try {
     const json = await invoke('list_instances_gui');
     const inst = JSON.parse(json);
@@ -427,7 +423,7 @@ async function loadInstances(pane) {
         <button class="btn btn-danger btn-sm" onclick="doUninstall('${i.app_id}')">Desinstalar</button></p>`).join('');
     } else if (pane === 'cache') {
       document.getElementById('cache-list').innerHTML = inst.map(i =>
-        `<p>${i.app_id}<br/><button class="btn btn-sm" onclick="doClearCache('${i.app_id}')">Limpar</button></p>`).join('');
+        `<p>${i.app_id}<br/><button class="btn btn-sm" onclick="doClearCache('${i.app_id}')">Limpar Cache</button></p>`).join('');
     } else if (pane === 'list') {
       document.getElementById('list-body').innerHTML = inst.map(i =>
         `<tr><td>${i.app_id}</td><td>${i.name}</td><td>${i.url}</td>
@@ -437,35 +433,40 @@ async function loadInstances(pane) {
 }
 
 async function doInstall(app_id) {
-  log(`Instalando ${app_id}...`);
-  const json = await invoke('list_instances_gui');
-  const inst = JSON.parse(json).find(i => i.app_id === app_id);
-  if (inst) await run('create_app_gui', { name: inst.name, url: inst.url, icon: '' });
+  log(`Instalando instância ${app_id}...`);
+  try {
+    const json = await invoke('list_instances_gui');
+    const inst = JSON.parse(json).find(i => i.app_id === app_id);
+    if (inst) await run('create_app_gui', { name: inst.name, url: inst.url, icon: '' });
+  } catch(e) { /* Fallback */ }
 }
 
+// CORREÇÃO: Mapeamento de snake_case idêntico às assinaturas #[tauri::command] no main.rs
 async function doUninstall(app_id) {
   const clean = document.getElementById(`clean_${app_id}`).checked;
   const del = document.getElementById(`del_${app_id}`).checked;
-  log(`Desinstalando ${app_id}...`);
-  await run('uninstall_app_gui', { appId: app_id, cleanData: clean, delFolder: del });
+  log(`Removendo aplicativo ${app_id}...`);
+  await run('uninstall_app_gui', { app_id: app_id, clean_data: clean, del_folder: del });
 }
 
+// CORREÇÃO: Mapeamento corrigido de appId para app_id em conformidade com o main.rs
 async function doClearCache(app_id) {
-  log(`Limpando cache de ${app_id}...`);
-  await run('clear_cache_gui', { appId: app_id });
+  log(`Limpando sandbox de cache para ${app_id}...`);
+  await run('clear_cache_gui', { app_id: app_id });
 }
 
 // ── 7. OneNote ────────────────────────────────────────────────────────────────
 async function loadOneNote() {
-  if (!scriptAvailable && scriptChecked) return; // Skip se script não disponível
+  if (!scriptAvailable && scriptChecked) return;
   try {
     const installed = await invoke('onenote_installed');
     const btn = document.getElementById('onenote-btn');
     const status = document.getElementById('onenote-status');
+    if (!btn || !status) return;
     if (installed) {
       btn.textContent = 'Desinstalar';
       btn.className = 'btn btn-danger';
-      status.textContent = '✓ OneNote já está instalado';
+      status.textContent = '✓ OneNote já está instalado e ativo no sistema';
     } else {
       btn.textContent = 'Instalar';
       btn.className = 'btn btn-primary';
@@ -475,45 +476,42 @@ async function loadOneNote() {
 }
 
 async function doOneNote() {
-  log('Gerenciando OneNote...');
+  log('Gerenciando ciclo de vida do OneNote...');
   await run('manage_onenote_gui');
   setTimeout(loadOneNote, 500);
 }
 
 // ── 8-10. Build, Clean, Purge ────────────────────────────────────────────────
 async function doBuild() {
-  log('Compilando claw-launcher...');
+  log('Iniciando compilação otimizada do claw-launcher...');
   await run('build_gui');
 }
 
 async function doClean() {
-  log('Limpando builds antigos...');
+  log('Limpando artefatos antigos de compilação...');
   await run('clean_builds_gui');
 }
 
 async function doPurge() {
   const confirm = document.getElementById('purge-confirm').checked;
-  if (!confirm) { log('Você precisa confirmar', true); return; }
-  log('PURGING EVERYTHING...');
+  if (!confirm) { log('Confirmação de segurança obrigatória para purgar', true); return; }
+  log('INICIANDO PURGA GERAL DO SISTEMA...');
   await run('purge_all_gui');
 }
 
 // Inicializa ao carregar
 window.addEventListener('DOMContentLoaded', async () => { 
-  log('Iniciando Claw Launcher...');
-  // Verifica script automaticamente na primeira vez
+  log('Iniciando Claw Launcher Web UI...');
   if (!scriptChecked) {
     try {
       scriptAvailable = await invoke('script_available');
       scriptChecked = true;
       if (scriptAvailable) {
-        log('OK - Script encontrado. Interface pronta!');
+        log('OK - Manipulador do sistema operacional conectado.');
       } else {
-        log('AVISO - Script create_app.sh nao foi encontrado.', true);
-        log('AVISO - Inicie via: ./create_app.sh', true);
+        log('AVISO - create_app.sh não foi mapeado no escopo global.', true);
       }
     } catch(e) {
-      log('AVISO - Funcionalidades de script estarao desativadas', true);
       scriptChecked = true;
     }
   }

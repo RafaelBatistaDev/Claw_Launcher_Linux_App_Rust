@@ -21,7 +21,7 @@ pub fn build_launcher_window(app: &mut App) -> Result<WebviewWindow, tauri::Erro
     Ok(window)
 }
 
-/// Constrói a janela do webapp isolado
+/// Constrói a janela do webapp isolado com persistência real de dados no ecossistema Linux
 pub fn build_webapp_window(
     app: &mut App,
     app_id: &str,
@@ -32,7 +32,7 @@ pub fn build_webapp_window(
     let host_origem = url.host_str().unwrap_or("").to_string();
     let webview_url = tauri::WebviewUrl::External(url);
     
-    // Cria diretório de dados se não existir
+    // Garante a criação física do profile isolado solicitado
     let _ = std::fs::create_dir_all(profile_path);
     
     let host_origem_closure = host_origem.clone();
@@ -42,6 +42,10 @@ pub fn build_webapp_window(
         .min_inner_size(640.0, 480.0)
         .resizable(true)
         .fullscreen(false);
+
+    // CORREÇÃO 2: Vincula nativamente o diretório de dados persistentes do WebKit
+    // Isso garante que cookies de sessão e localStorage nativos do WebKit sobrevivam ao reboot do Linux
+    builder = builder.data_directory(profile_path.to_path_buf());
     
     let app_id_lower = app_id.to_lowercase();
     if app_id_lower.contains("onenote") || app_id_lower.contains("onedrive") {
@@ -56,7 +60,6 @@ pub fn build_webapp_window(
                     configurable: false
                 });
 
-                // Interceptar window.open para manter navegação legítima da Microsoft na mesma WebView
                 const originalWindowOpen = window.open;
                 window.open = function(url, target, features) {
                     if (url) {
@@ -81,7 +84,6 @@ pub fn build_webapp_window(
                     return originalWindowOpen(url, target, features);
                 };
 
-                // Interceptar cliques em links target="_blank" para abrir na mesma WebView
                 document.addEventListener('click', (e) => {
                     let target = e.target;
                     while (target && target.tagName !== 'A') {
@@ -173,9 +175,20 @@ pub fn build_webapp_window(
                     }
                 };
                 
-                setTimeout(salvarSessao, 5000);
-                window.addEventListener("storage", salvarSessao);
-                setInterval(salvarSessao, 10000);
+                // Exposição segura da referência no contexto global do window para o manipulador Rust (.eval())
+                window.__CLAW_FLUSH_SESSAO__ = salvarSessao;
+                
+                // CORREÇÃO 1: Proxy para interceptar alterações síncronas do MSAL no localStorage na MESMA janela
+                const originalSetItem = localStorage.setItem;
+                localStorage.setItem = function(key, value) {
+                    originalSetItem.apply(this, arguments);
+                    if (key.toLowerCase().includes("msal") || key.toLowerCase().includes("token")) {
+                        salvarSessao();
+                    }
+                };
+
+                setTimeout(salvarSessao, 2000);
+                setInterval(salvarSessao, 5000);
             })();
         "##);
     }
@@ -203,19 +216,20 @@ pub fn build_webapp_window(
                     let _ = std::process::Command::new("xdg-open")
                         .arg(dest_url.as_str())
                         .spawn();
-                    return false; // Bloqueia a navegação interna na WebView
+                    return false;
                 }
             }
-            true // Permite a navegação
+            true
         })
         .build()?;
-    
-    // Configuração de dados para persistência
-    if let Ok(data_dir) = std::env::var("XDG_DATA_HOME") {
-        let webkit_path = format!("{}/{}/webkit", data_dir, app_id);
-        let _ = std::fs::create_dir_all(&webkit_path);
-    }
+
+    // SOLUÇÃO ADICIONAL: Garante flush síncrono avaliando a referência global correta antes do fechamento
+    let window_clone = window.clone();
+    window.on_window_event(move |event| {
+        if let tauri::WindowEvent::CloseRequested { .. } = event {
+            let _ = window_clone.eval("if(typeof window.__CLAW_FLUSH_SESSAO__ === 'function') { window.__CLAW_FLUSH_SESSAO__(); }");
+        }
+    });
     
     Ok(window)
 }
-
