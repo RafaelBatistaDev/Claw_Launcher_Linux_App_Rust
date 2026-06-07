@@ -23,6 +23,14 @@ removed() { echo -e "${Y}[DEL]${N}     $*"; }
 
 # ── Configurações ─────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+INSTANCES_ROOT_DIR="${SCRIPT_DIR}"
+if [ -f "${SCRIPT_DIR}/project_root.conf" ]; then
+    # shellcheck disable=SC1090
+    source "${SCRIPT_DIR}/project_root.conf"
+    if [ -d "${PROJECT_ROOT:-}" ]; then
+        INSTANCES_ROOT_DIR="${PROJECT_ROOT}"
+    fi
+fi
 REAL_HOME="${HOME}"
 [[ -n "${SUDO_USER:-}" ]] && REAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
 
@@ -139,7 +147,7 @@ update_caches() {
 # ── Instâncias ────────────────────────────────────────────────────────────────
 
 get_instances() {
-    find "$SCRIPT_DIR" -maxdepth 1 -type d -name "instance_*" | while read -r dir; do
+    find "$INSTANCES_ROOT_DIR" -maxdepth 1 -type d -name "instance_*" | while read -r dir; do
         echo "${dir##*/instance_}"
     done | sort | uniq
 }
@@ -148,7 +156,7 @@ generate_unique_app_id() {
     local base_id="$1"
     local candidate="$base_id"
     local index=1
-    while [ -d "${SCRIPT_DIR}/instance_${candidate}" ]; do
+    while [ -d "${INSTANCES_ROOT_DIR}/instance_${candidate}" ]; do
         candidate="${base_id}_${index}"
         index=$((index + 1))
     done
@@ -486,7 +494,13 @@ install_new_instance() {
     [ -z "$clean_id" ] && { error "Nome inválido."; return 1; }
 
     local app_id="Claw_${clean_id}"
-    app_id=$(generate_unique_app_id "$app_id")
+
+    # Validação estrita: impede duplicações
+    if [ -d "${INSTANCES_ROOT_DIR}/instance_${app_id}" ] || [ -f "${APPS_DIR}/${app_id}.desktop" ]; then
+        error "Erro: O aplicativo '${raw_name}' (ID: ${app_id}) já existe ou está instalado no sistema. Não é permitida a duplicação."
+        return 1
+    fi
+
     local folder="instance_${app_id}"
     LAST_CREATED_FOLDER=""
 
@@ -514,14 +528,14 @@ install_new_instance() {
     log "  URL    : ${url}"
     log "  Ícone  : ${icon_src:-nenhum}"
 
-    # 1. Pasta da instância
+    # 1. Pasta da instância na raiz do projeto
     step "Criando pasta da instância..."
-    mkdir -p "${SCRIPT_DIR}/${folder}"
-    success "Pasta: ${SCRIPT_DIR}/${folder}"
+    mkdir -p "${INSTANCES_ROOT_DIR}/${folder}"
+    success "Pasta: ${INSTANCES_ROOT_DIR}/${folder}"
 
     # 2. Salvar metadados da instância
     step "Salvando metadados..."
-    cat > "${SCRIPT_DIR}/${folder}/instance.conf" << CONF
+    cat > "${INSTANCES_ROOT_DIR}/${folder}/instance.conf" << CONF
 APP_ID="${app_id}"
 APP_NAME="${raw_name}"
 URL="${url}"
@@ -531,14 +545,14 @@ CONF
 
     # 3. Copiar ícone para a pasta da instância
     if [ -n "$icon_src" ] && [ -f "$icon_src" ]; then
-        cp "$icon_src" "${SCRIPT_DIR}/${folder}/${app_id}.png"
+        cp "$icon_src" "${INSTANCES_ROOT_DIR}/${folder}/${app_id}.png"
         success "Ícone copiado: ${app_id}.png"
     fi
 
     # 4. Arquivo .desktop com Exec= usando claw-launcher
     step "Gerando arquivo .desktop..."
     mkdir -p "$APPS_DIR"
-    cat > "${SCRIPT_DIR}/${folder}/${app_id}.desktop" << DESKTOP
+    cat > "${INSTANCES_ROOT_DIR}/${folder}/${app_id}.desktop" << DESKTOP
 [Desktop Entry]
 Name=${raw_name}
 Comment=${raw_name} - Dashboard IA
@@ -674,7 +688,7 @@ create_preconfigured_app() {
         if install_new_instance "$raw_name" "$url" "$icon_name"; then
             if [ -n "$LAST_CREATED_FOLDER" ]; then
                 step "Instalando no sistema..."
-                install_instance_to_system "${SCRIPT_DIR}/${LAST_CREATED_FOLDER}"
+                install_instance_to_system "${INSTANCES_ROOT_DIR}/${LAST_CREATED_FOLDER}"
                 success "App '${raw_name}' criado e instalado."
             fi
         fi
@@ -715,7 +729,7 @@ create_custom_app() {
     if install_new_instance "$raw_name" "$url" "$icon_name"; then
         if [ -n "$LAST_CREATED_FOLDER" ]; then
             step "Instalando no sistema..."
-            install_instance_to_system "${SCRIPT_DIR}/${LAST_CREATED_FOLDER}"
+            install_instance_to_system "${INSTANCES_ROOT_DIR}/${LAST_CREATED_FOLDER}"
             success "App '${raw_name}' criado e instalado com sucesso!"
         fi
     fi
@@ -733,7 +747,7 @@ install_instance() {
         [[ "$opt" == "Cancelar" || -z "$opt" ]] && return
         
         # ╔═══════════════════════════════════════════════════════════╗
-        # ║ VERIFICAÇÃO: Evita duplicação ao instalar                ║
+        # ║ VERIFICAÇÃO: Evita duplicar apps instalados              ║
         # ╚═══════════════════════════════════════════════════════════╝
         local app_id="$opt"
         if [ -f "${APPS_DIR}/${app_id}.desktop" ]; then
@@ -748,7 +762,7 @@ install_instance() {
             fi
         fi
         
-        install_instance_to_system "${SCRIPT_DIR}/instance_${opt}"
+        install_instance_to_system "${INSTANCES_ROOT_DIR}/instance_${opt}"
         break
     done
 }
@@ -762,7 +776,7 @@ uninstall_instance() {
     select opt in "${options[@]}" "Cancelar"; do
         [[ "$opt" == "Cancelar" || -z "$opt" ]] && return
 
-        local folder="${SCRIPT_DIR}/instance_${opt}"
+        local folder="${INSTANCES_ROOT_DIR}/instance_${opt}"
         local app_id="$opt"
 
         log "═══ Desinstalando ${app_id} ═══"
@@ -807,7 +821,7 @@ list_all() {
     local found=0
     while IFS= read -r name; do
         if [ -n "$name" ]; then
-            local conf="${SCRIPT_DIR}/instance_${name}/instance.conf"
+            local conf="${INSTANCES_ROOT_DIR}/instance_${name}/instance.conf"
             if [ -f "$conf" ]; then
                 local app_url=""
                 app_url=$(grep '^URL=' "$conf" | cut -d'"' -f2)
@@ -838,7 +852,7 @@ purge_all() {
     done
 
     step "Removendo pastas instance_*..."
-    find "$SCRIPT_DIR" -maxdepth 1 -type d -name "instance_*" -exec rm -rf {} + 2>/dev/null || true
+    find "$INSTANCES_ROOT_DIR" -maxdepth 1 -type d -name "instance_*" -exec rm -rf {} + 2>/dev/null || true
 
     step "Removendo binário do launcher e backups..."
     remove_file "$LAUNCHER_BIN"
@@ -877,7 +891,7 @@ manage_onenote() {
     else
         log "═══ Instalação Expressa: OneNote ═══"
         install_new_instance "OneNote" "https://onenote.cloud.microsoft/pt-br/" "onenote"
-        [ -n "$LAST_CREATED_FOLDER" ] && install_instance_to_system "${SCRIPT_DIR}/${LAST_CREATED_FOLDER}"
+        [ -n "$LAST_CREATED_FOLDER" ] && install_instance_to_system "${INSTANCES_ROOT_DIR}/${LAST_CREATED_FOLDER}"
     fi
 }
 
@@ -886,7 +900,7 @@ manage_onenote() {
 _create_install_gui() {
     install_new_instance "$1" "$2" "$3"
     [ -n "$LAST_CREATED_FOLDER" ] && \
-        install_instance_to_system "${SCRIPT_DIR}/${LAST_CREATED_FOLDER}"
+        install_instance_to_system "${INSTANCES_ROOT_DIR}/${LAST_CREATED_FOLDER}"
 }
 
 _uninstall_gui() {
@@ -899,7 +913,7 @@ _uninstall_gui() {
     [[ "$clean_data" == "s" ]] && clear_app_cache "$app_id"
     update_caches
     if [[ "$del_folder" == "s" ]]; then
-        local folder="${SCRIPT_DIR}/instance_${app_id}"
+        local folder="${INSTANCES_ROOT_DIR}/instance_${app_id}"
         [ -d "$folder" ] && rm -rf "$folder" && removed "$folder"
     fi
     success "Desinstalado: ${app_id}"
@@ -911,7 +925,7 @@ _purge_force() {
     for size in "${ICON_SIZES[@]}"; do
         find "${ICONS_BASE}/${size}x${size}/apps" -name "Claw_*.png" -delete 2>/dev/null || true
     done
-    find "$SCRIPT_DIR" -maxdepth 1 -type d -name "instance_*" -exec rm -rf {} + 2>/dev/null || true
+    find "$INSTANCES_ROOT_DIR" -maxdepth 1 -type d -name "instance_*" -exec rm -rf {} + 2>/dev/null || true
     remove_file "$LAUNCHER_BIN"; remove_file "${LAUNCHER_BIN}.bak"
     rm -rf "${REAL_HOME}/.local/share"/Claw_* 2>/dev/null || true
     rm -rf "${REAL_HOME}/.cache"/Claw_* 2>/dev/null || true
@@ -962,7 +976,7 @@ _list_json() {
     echo "["
     while IFS= read -r name; do
         [ -z "$name" ] && continue
-        local conf="${SCRIPT_DIR}/instance_${name}/instance.conf"
+        local conf="${INSTANCES_ROOT_DIR}/instance_${name}/instance.conf"
         local app_name="$name" url="" installed="false"
         [ -f "$conf" ] && {
             app_name=$(grep '^APP_NAME=' "$conf" | cut -d'"' -f2)

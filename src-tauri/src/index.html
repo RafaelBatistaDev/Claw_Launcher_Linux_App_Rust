@@ -138,7 +138,6 @@ tr:hover td{background:#131328}
   <button data-pane="uninstall"><span class="icon">✕</span>Desinstalar</button>
   <button data-pane="list"><span class="icon">≡</span>Listar</button>
   <button data-pane="cache"><span class="icon">⊘</span>Cache</button>
-  <button data-pane="onenote"><span class="icon">⊞</span>OneNote</button>
   <hr>
   <button data-pane="build"><span class="icon">⚒</span>Compilar</button>
   <button data-pane="clean"><span class="icon">◧</span>Limpar</button>
@@ -186,11 +185,7 @@ tr:hover td{background:#131328}
       <div id="cache-list"></div>
     </div>
 
-    <div id="pane-onenote" hidden>
-      <h2>⊞ OneNote</h2>
-      <p id="onenote-status" style="margin-bottom:16px;color:#aaa;font-size:.9rem"></p>
-      <button id="onenote-btn" class="btn btn-primary">…</button>
-    </div>
+
 
     <div id="pane-build" hidden>
       <h2>⚒ Compilar e Instalar</h2>
@@ -245,7 +240,7 @@ const PRESET = [
   { url: 'https://claude.ai/new',                          name: 'Claude',         icon: 'claudecode'   },
   { url: 'https://chat.deepseek.com/',                     name: 'DeepSeek',       icon: 'deepseek'     },
   { url: 'https://gemini.google.com/app?hl=pt-BR',         name: 'Gemini',         icon: 'Gemini'       },
-  { url: 'https://onenote.cloud.microsoft/',         name: 'OneNote',        icon: 'onenote'      },
+  { url: 'https://onenote.cloud.microsoft/pt-br/',         name: 'OneNote',        icon: 'onenote'      },
   { url: 'https://vscode.dev/?vscode-lang=pt-br',          name: 'VSCode',         icon: 'vscode'       },
   { url: 'https://mail.google.com/mail/?authuser=0',       name: 'Gmail',          icon: 'gmail'        },
   { url: 'https://github.com/',                            name: 'GitHub',         icon: 'github'       },
@@ -318,7 +313,6 @@ const Nav = {
     uninstall:     () => Instances.renderUninstall(),
     list:          () => Instances.renderList(),
     cache:         () => Instances.renderCache(),
-    onenote:       () => OneNote.load(),
   },
 
   show(paneId) {
@@ -484,31 +478,7 @@ const Instances = {
   },
 };
 
-// ── OneNote ───────────────────────────────────────────────────────────────────
-const OneNote = {
-  async load() {
-    try {
-      const installed = await invoke('onenote_installed');
-      const btn    = document.getElementById('onenote-btn');
-      const status = document.getElementById('onenote-status');
-      if (installed) {
-        btn.textContent = 'Desinstalar';
-        btn.className   = 'btn btn-danger';
-        status.textContent = '✓ OneNote já está instalado';
-      } else {
-        btn.textContent = 'Instalar';
-        btn.className   = 'btn btn-primary';
-        status.textContent = '⊘ OneNote não está instalado';
-      }
-    } catch { /* silencioso */ }
-  },
 
-  async toggle() {
-    Log.write('Gerenciando OneNote...');
-    await App.run('manage_onenote_gui');
-    await this.load();   // Aguarda a Promise — sem setTimeout cego
-  },
-};
 
 // ── Inicialização ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -534,7 +504,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await App.run('purge_all_gui');
   });
   document.getElementById('btn-clear-log').addEventListener('click', () => Log.clear());
-  document.getElementById('onenote-btn').addEventListener('click', () => OneNote.toggle());
 
   // Verificação inicial do script
   Log.write('Iniciando Claw Launcher...');

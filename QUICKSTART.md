@@ -19,7 +19,8 @@ chmod +x *.sh
 ```
 # Desistalar tudo
 ```bash
-uv run purg_app.py
+
+
 ```
 
 > [!NOTE]

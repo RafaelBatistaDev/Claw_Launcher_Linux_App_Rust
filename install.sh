@@ -117,7 +117,7 @@ run_build() {
 
     log "═══ Passo 2/4: Compilando claw-launcher ═══"
     step "Delegando para build.sh..."
-    bash "${SCRIPT_DIR}/build.sh"
+    bash "${SCRIPT_DIR}/build.sh" --no-clean
 
     if [ ! -f "$BINARY_SRC" ]; then
         error "build.sh concluiu mas o binário não foi encontrado em ${BINARY_SRC}"
@@ -132,6 +132,7 @@ install_binary() {
     log "═══ Passo 3/4: Instalando binário ═══"
 
     mkdir -p "$INSTALL_DIR"
+    rm -f "$INSTALL_PATH"
     cp "$BINARY_SRC" "$INSTALL_PATH"
     chmod 755 "$INSTALL_PATH"
 
@@ -258,6 +259,10 @@ install_resources() {
 
     local share_claw="${HOME}/.local/share/claw-launcher"
     mkdir -p "$share_claw"
+
+    # Salva a raiz do projeto de forma absoluta para o create_app.sh saber onde criar as instâncias
+    echo "PROJECT_ROOT=\"${SCRIPT_DIR}\"" > "${share_claw}/project_root.conf"
+    chmod 644 "${share_claw}/project_root.conf"
 
     # Copia o script principal, o de dependências e a pasta de ícones
     cp "${SCRIPT_DIR}/create_app.sh" "${share_claw}/"

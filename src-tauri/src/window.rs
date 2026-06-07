@@ -41,5 +41,6 @@ pub fn build_webapp_window(
         .fullscreen(false)
         .user_agent(user_agent)
         .initialization_script(init_script)
+        .data_directory(profile_path.to_path_buf())
         .build()
 }
