@@ -18,25 +18,23 @@ impl Args {
 
     pub fn profile_path(&self) -> PathBuf {
         let id = self.app_id.as_deref().unwrap_or("claw-launcher");
-        self.profile.clone().unwrap_or_else(|| {
-            dirs::data_local_dir()
-                .unwrap_or_else(fallback_home)
-                .join(id)
-        })
+        match &self.profile {
+            Some(p) => p.clone(),
+            None => {
+                let mut p = dirs::data_local_dir().unwrap_or_else(||
+                    PathBuf::from(std::env::var("HOME").unwrap_or("/tmp".into()))
+                        .join(".local").join("share"));
+                p.push(id);
+                p
+            }
+        }
     }
 
     pub fn cache_path(&self) -> PathBuf {
         let id = self.app_id.as_deref().unwrap_or("claw-launcher");
-        dirs::cache_dir()
-            .unwrap_or_else(fallback_home)
-            .join(id)
+        let mut p = dirs::cache_dir().unwrap_or_else(||
+            PathBuf::from(std::env::var("HOME").unwrap_or("/tmp".into())).join(".cache"));
+        p.push(id);
+        p
     }
-}
-
-/// Fallback seguro quando dirs falha — nunca usa /tmp para evitar perda de dados.
-fn fallback_home() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join(".local")
-        .join("share")
 }
