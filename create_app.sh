@@ -169,8 +169,20 @@ clear_app_cache() {
     local app_id="$1"
     log "═══ Limpando cache: ${app_id} ═══"
 
+    local custom_data_dir=""
+    local conf="${INSTANCES_ROOT_DIR}/instance_${app_id}/instance.conf"
+    if [ -f "$conf" ]; then
+        # shellcheck disable=SC1090
+        source "$conf"
+        custom_data_dir="${DATA_DIR:-}"
+    fi
+
     step "Removendo dados de perfil..."
     local share_dir="${REAL_HOME}/.local/share/${app_id}"
+    if [ -n "$custom_data_dir" ] && [ -d "$custom_data_dir" ]; then
+        rm -rf "$custom_data_dir"
+        removed "${custom_data_dir}/"
+    fi
     if [[ -d "$share_dir" ]]; then
         remove_file "${share_dir}/config.json"
         remove_file "${share_dir}/window.json"
@@ -180,7 +192,7 @@ clear_app_cache() {
         [[ -d "${share_dir}/org.webkit"* ]]       && { rm -rf "${share_dir}/org.webkit"*; removed "${share_dir}/org.webkit*/"; }
         rmdir --ignore-fail-on-non-empty "${share_dir}" 2>/dev/null || true
     else
-        warn "Sem dados de perfil: ${share_dir}"
+        [ -z "$custom_data_dir" ] && warn "Sem dados de perfil: ${share_dir}"
     fi
 
     step "Removendo cache XDG..."
@@ -535,11 +547,20 @@ install_new_instance() {
 
     # 2. Salvar metadados da instância
     step "Salvando metadados..."
+    local persistence_home="${REAL_HOME}"
+    if [[ "${persistence_home}" == /home/* ]] && [[ -d "/var/home" ]]; then
+        persistence_home="/var/home/${persistence_home#/home/}"
+    fi
+    local data_dir_val="${persistence_home}/.local/share/claw-launcher/profiles/${app_id}"
+
     cat > "${INSTANCES_ROOT_DIR}/${folder}/instance.conf" << CONF
 APP_ID="${app_id}"
 APP_NAME="${raw_name}"
 URL="${url}"
 ICON_SRC="${icon_src}"
+
+# PONTO DE VERIFICAÇÃO: Diretório persistente local para manter os Cookies e LocalStorage da Microsoft
+DATA_DIR="${data_dir_val}"
 CONF
     success "Metadados salvos em instance.conf"
 
@@ -556,7 +577,7 @@ CONF
 [Desktop Entry]
 Name=${raw_name}
 Comment=${raw_name} - Dashboard IA
-Exec=${LAUNCHER_BIN} --app-id ${app_id} --url ${url} --name ${raw_name} %U
+Exec=${LAUNCHER_BIN} --app-id ${app_id} --url ${url} --name ${raw_name} --profile ${data_dir_val} %U
 Icon=${app_id}
 Terminal=false
 Type=Application
@@ -584,6 +605,19 @@ install_instance_to_system() {
     else
         error "instance.conf não encontrado em: ${folder}"
         return 1
+    fi
+
+    # Se DATA_DIR não estiver definida no instance.conf existente, adiciona-a dinamicamente
+    if [ -z "${DATA_DIR:-}" ]; then
+        local persistence_home="${REAL_HOME}"
+        if [[ "${persistence_home}" == /home/* ]] && [[ -d "/var/home" ]]; then
+            persistence_home="/var/home/${persistence_home#/home/}"
+        fi
+        DATA_DIR="${persistence_home}/.local/share/claw-launcher/profiles/${APP_ID}"
+        echo "" >> "${folder}/instance.conf"
+        echo "# PONTO DE VERIFICAÇÃO: Diretório persistente local para manter os Cookies e LocalStorage da Microsoft" >> "${folder}/instance.conf"
+        echo "DATA_DIR=\"${DATA_DIR}\"" >> "${folder}/instance.conf"
+        success "Variável DATA_DIR adicionada retrospectivamente em ${folder}/instance.conf"
     fi
 
     log "Instalando ${APP_NAME} no sistema..."
@@ -616,20 +650,26 @@ install_instance_to_system() {
         warn "Ícone não encontrado: ${icon_file}"
     fi
 
-    # Instalar .desktop (apenas uma vez)
-    local desktop_src="${folder}/${APP_ID}.desktop"
-    if [ -f "$desktop_src" ]; then
-        mkdir -p "$APPS_DIR"
-        cp "$desktop_src" "${APPS_DIR}/${APP_ID}.desktop"
-        chmod 644 "${APPS_DIR}/${APP_ID}.desktop"
-        success ".desktop instalado em ${APPS_DIR}/"
-    else
-        error ".desktop não encontrado: ${desktop_src}"
-        return 1
-    fi
+    # Instalar .desktop (gerado dinamicamente com base no instance.conf)
+    step "Gerando e instalando arquivo .desktop..."
+    mkdir -p "$APPS_DIR"
+    cat > "${APPS_DIR}/${APP_ID}.desktop" << DESKTOP
+[Desktop Entry]
+Name=${APP_NAME}
+Comment=${APP_NAME} - Dashboard IA
+Exec=${LAUNCHER_BIN} --app-id ${APP_ID} --url ${URL} --name ${APP_NAME} --profile ${DATA_DIR} %U
+Icon=${APP_ID}
+Terminal=false
+Type=Application
+StartupNotify=true
+StartupWMClass=${APP_ID}
+Categories=Network;WebBrowser;
+DESKTOP
+    chmod 644 "${APPS_DIR}/${APP_ID}.desktop"
+    success ".desktop instalado em ${APPS_DIR}/"
 
-    # Cria dados/cache estruturado para WebKit
-    local data_dir="${REAL_HOME}/.local/share/${APP_ID}"
+    # Cria dados/cache estruturado para WebKit usando DATA_DIR
+    local data_dir="${DATA_DIR}"
     local cache_dir="${REAL_HOME}/.cache/${APP_ID}"
     
     step "Inicializando estrutura de persistência..."
@@ -637,7 +677,7 @@ install_instance_to_system() {
     mkdir -p "${data_dir}/storage"
     mkdir -p "${cache_dir}/webkit"
     mkdir -p "${cache_dir}/http"
-    success "Diretórios de armazenamento criados."
+    success "Diretórios de armazenamento criados em ${data_dir}."
 
     update_caches
     success "═══ ${APP_NAME} instalado com sucesso ═══"

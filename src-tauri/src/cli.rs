@@ -17,17 +17,21 @@ impl Args {
     }
 
     pub fn profile_path(&self) -> PathBuf {
-        let id = self.app_id.as_deref().unwrap_or("claw-launcher");
-        match &self.profile {
-            Some(p) => p.clone(),
-            None => {
-                let mut p = dirs::data_local_dir().unwrap_or_else(||
-                    PathBuf::from(std::env::var("HOME").unwrap_or("/tmp".into()))
-                        .join(".local").join("share"));
-                p.push(id);
-                p
-            }
+        if let Some(p) = &self.profile {
+            return p.clone();
         }
+
+        let id = self.app_id.as_deref().unwrap_or("claw-launcher");
+
+        if let Some(custom_dir) = crate::read_data_dir_from_conf(id) {
+            return custom_dir;
+        }
+
+        let mut p = dirs::data_local_dir().unwrap_or_else(||
+            PathBuf::from(std::env::var("HOME").unwrap_or("/tmp".into()))
+                .join(".local").join("share"));
+        p.push(id);
+        p
     }
 
     pub fn cache_path(&self) -> PathBuf {

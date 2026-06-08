@@ -13,7 +13,7 @@ use base64::Engine;
 
 // ── Helpers internos ──────────────────────────────────────────────────────────
 
-fn find_script() -> Result<PathBuf, String> {
+pub(crate) fn find_script() -> Result<PathBuf, String> {
     // 1. Tenta usar CLAW_SCRIPT_DIR (environment var)
     if let Ok(dir) = std::env::var("CLAW_SCRIPT_DIR") {
         let script = PathBuf::from(&dir).join("create_app.sh");
@@ -51,6 +51,31 @@ fn find_script() -> Result<PathBuf, String> {
     }
     
     Err("create_app.sh não encontrado. Certifique-se de executar a GUI via ./create_app.sh".to_string())
+}
+
+pub(crate) fn read_data_dir_from_conf(app_id: &str) -> Option<PathBuf> {
+    if let Ok(script) = find_script() {
+        if let Some(instances_root) = script.parent() {
+            let conf_path = instances_root
+                .join(format!("instance_{}", app_id))
+                .join("instance.conf");
+            if conf_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(conf_path) {
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.starts_with("DATA_DIR=") {
+                            let value = trimmed["DATA_DIR=".len()..].trim();
+                            let cleaned = value.trim_matches(|c| c == '"' || c == '\'');
+                            if !cleaned.is_empty() {
+                                return Some(PathBuf::from(cleaned));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 fn strip_ansi(input: &str) -> String {
@@ -310,67 +335,64 @@ fn main() {
                 window::build_launcher_window(app)?;
             } else {
                 let url = parsed_url.unwrap();
-let window = window::build_webapp_window(
-    app, 
-    &app_id, 
-    &name, 
-    url, 
-    &profile,
-    "", // user_agent: &str (Padrão do sistema/Webview nativo)
-    ""  // init_script: &str (Nenhum script de injeção inicial)
-)?;
-
-                let window_shortcuts = window.clone();
-                window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Focused(true) = event {
-                        let inject_browser_behavior = r##"
-                        if (window.__CLAW_BROWSER_INJECTED__) return;
-                        window.__CLAW_BROWSER_INJECTED__ = true;
-                        
-                        document.addEventListener('click', function(e) {
-                            const link = e.target.closest('a[href]');
-                            if (!link) return;
-                            const href = link.getAttribute('href');
-                            if (!href || href === '#' || href.startsWith('javascript:')) return;
-                            if (href.startsWith('#')) return;
-                        }, false);
-                        
-                        const originalWindowOpen = window.open;
-                        window.open = function(url, target, features) {
-                            if (!url) return null;
-                            if (!url.startsWith('http') && !url.startsWith('//') && 
-                                !url.startsWith('data:') && !url.startsWith('blob:')) {
-                                try {
-                                    url = new URL(url, location.origin).href;
-                                } catch (e) {
-                                    url = location.href;
-                                }
+                let inject_browser_behavior = r##"
+                if (!window.__CLAW_BROWSER_INJECTED__) {
+                    window.__CLAW_BROWSER_INJECTED__ = true;
+                    
+                    document.addEventListener('click', function(e) {
+                        const link = e.target.closest('a[href]');
+                        if (!link) return;
+                        const href = link.getAttribute('href');
+                        if (!href || href === '#' || href.startsWith('javascript:')) return;
+                        if (href.startsWith('#')) return;
+                    }, false);
+                    
+                    const originalWindowOpen = window.open;
+                    window.open = function(url, target, features) {
+                        if (!url) return null;
+                        if (!url.startsWith('http') && !url.startsWith('//') && 
+                            !url.startsWith('data:') && !url.startsWith('blob:')) {
+                            try {
+                                url = new URL(url, location.origin).href;
+                            } catch (e) {
+                                url = location.href;
                             }
-                            location.href = url;
-                            return null;
-                        };
-                        
-                        const originalFormSubmit = HTMLFormElement.prototype.submit;
-                        HTMLFormElement.prototype.submit = function() {
-                            const target = this.getAttribute('target');
-                            if (target === '_blank' || target === '_new') {
-                                this.removeAttribute('target');
-                                originalFormSubmit.call(this);
-                                this.setAttribute('target', target);
-                                return;
-                            }
+                        }
+                        location.href = url;
+                        return null;
+                    };
+                    
+                    const originalFormSubmit = HTMLFormElement.prototype.submit;
+                    HTMLFormElement.prototype.submit = function() {
+                        const target = this.getAttribute('target');
+                        if (target === '_blank' || target === '_new') {
+                            this.removeAttribute('target');
                             originalFormSubmit.call(this);
-                        };
-                        
-                        Object.defineProperty(navigator, 'userAgent', {
-                            value: (navigator.__UA__ || 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36') + ' CLAW-Browser/1.0',
-                            writable: false,
-                            configurable: false
-                        });
-                        "##;
-                        let _ = window_shortcuts.eval(inject_browser_behavior);
-                    }
-                });
+                            this.setAttribute('target', target);
+                            return;
+                        }
+                        originalFormSubmit.call(this);
+                    };
+                    
+                    Object.defineProperty(navigator, 'userAgent', {
+                        value: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 CLAW-Browser/1.0',
+                        writable: false,
+                        configurable: false
+                    });
+                }
+                "##;
+
+                let user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 CLAW-Browser/1.0";
+
+                let window = window::build_webapp_window(
+                    app, 
+                    &app_id, 
+                    &name, 
+                    url, 
+                    &profile,
+                    user_agent,
+                    inject_browser_behavior
+                )?;
 
                 if let Ok(state) = WindowState::load(&profile) {
                     let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
@@ -387,14 +409,18 @@ let window = window::build_webapp_window(
                 let window_clone  = window.clone();
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { .. } = event {
-                        if let Ok(size) = window_clone.inner_size() {
-                            let pos = window_clone.outer_position()
-                                .unwrap_or(tauri::PhysicalPosition { x: 0, y: 0 });
-                            let _ = WindowState {
-                                width: size.width as f64, height: size.height as f64,
-                                x: pos.x, y: pos.y,
-                            }.save(&profile_close);
-                        }
+                        let win = window_clone.clone();
+                        let prof = profile_close.clone();
+                        tauri::async_runtime::spawn(async move {
+                            if let Ok(size) = win.inner_size() {
+                                let pos = win.outer_position()
+                                    .unwrap_or(tauri::PhysicalPosition { x: 0, y: 0 });
+                                let _ = WindowState {
+                                    width: size.width as f64, height: size.height as f64,
+                                    x: pos.x, y: pos.y,
+                                }.save(&prof);
+                            }
+                        });
                     }
                 });
             }
