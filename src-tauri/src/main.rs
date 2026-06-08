@@ -138,10 +138,9 @@ fn list_instances_gui() -> Result<String, String> {
 /// Lista ícones disponíveis na pasta ICON/
 #[tauri::command]
 fn list_icons_gui() -> Result<Vec<String>, String> {
-    let dir = std::env::var("CLAW_SCRIPT_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("."));
-    let icon_dir = dir.join("ICON");
+    let script = find_script()?;
+    let script_dir = script.parent().ok_or("Erro ao localizar pasta pai")?;
+    let icon_dir = script_dir.join("ICON");
     if !icon_dir.exists() { return Ok(vec![]); }
     let mut icons: Vec<String> = std::fs::read_dir(&icon_dir)
         .map_err(|e| e.to_string())?
@@ -208,6 +207,15 @@ fn get_icon_base64(name: String) -> Result<String, String> {
 #[tauri::command]
 fn create_app_gui(name: String, url: String, icon: String) -> Result<String, String> {
     run_sh(&["create-install", &name, &url, &icon])
+}
+
+/// Instala no sistema uma instância que já existe localmente
+#[tauri::command]
+fn install_app_gui(app_id: String) -> Result<String, String> {
+    let script = find_script()?;
+    let instances_root = script.parent().ok_or("Diretório pai inválido")?;
+    let folder_path = instances_root.join(format!("instance_{}", app_id));
+    run_sh(&["install", &folder_path.to_string_lossy()])
 }
 
 /// Desinstala instância (opção 4)
@@ -433,6 +441,7 @@ fn main() {
             list_icons_gui,
             get_icon_base64,
             create_app_gui,
+            install_app_gui,
             uninstall_app_gui,
             clear_cache_gui,
             manage_onenote_gui,

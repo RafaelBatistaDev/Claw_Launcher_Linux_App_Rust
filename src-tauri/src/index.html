@@ -159,8 +159,12 @@ tr:hover td{background:#131328}
       <div class="form-group"><label>URL</label>
         <input id="c-url" type="url" placeholder="https://chat.openai.com"></div>
       <div class="form-group"><label>Ícone</label>
-        <select id="c-icon"><option value="">-- Selecione --</option></select></div>
-      <button class="btn btn-primary" id="btn-custom">Criar e Instalar</button>
+        <div style="display:flex;align-items:center;gap:12px">
+          <select id="c-icon" style="flex:1;padding:9px 12px;background:#1c1c2e;border:1px solid #333;border-radius:7px;color:#e2e2e2;font-size:.9rem"><option value="">-- Selecione --</option></select>
+          <div id="c-icon-preview" style="width:38px;height:38px;background:#13132b;border:1px solid #333;border-radius:7px;display:flex;align-items:center;justify-content:center;overflow:hidden"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-custom" style="margin-top:8px">Criar e Instalar</button>
     </div>
 
     <div id="pane-install" hidden>
@@ -381,7 +385,7 @@ const Custom = {
     try {
       const icons = await invoke('list_icons_gui');
       const sel = document.getElementById('c-icon');
-      sel.innerHTML = '<option value="">-- Nenhum --</option>' +
+      sel.innerHTML = '<option value="">-- Selecione --</option>' +
         icons.map(i => `<option value="${i}">${i}</option>`).join('');
     } catch { /* silencioso se script ausente */ }
   },
@@ -392,7 +396,21 @@ const Custom = {
     const icon = document.getElementById('c-icon').value;
     if (!name || !url) { Log.write('Nome e URL obrigatórios', true); return; }
     Log.write(`Criando ${name}...`);
-    await App.run('create_app_gui', { name, url, icon });
+    try {
+      await App.run('create_app_gui', { name, url, icon });
+      document.getElementById('c-name').value = '';
+      document.getElementById('c-url').value = '';
+      document.getElementById('c-icon').value = '';
+      document.getElementById('c-icon-preview').innerHTML = '';
+      Log.write(`Instância '${name}' criada e instalada com sucesso!`);
+      setTimeout(() => {
+        Instances.renderInstall();
+        Instances.renderUninstall();
+        Instances.renderList();
+      }, 1000);
+    } catch (err) {
+      Log.write(`Erro ao criar app: ${err}`, true);
+    }
   },
 };
 
@@ -418,15 +436,6 @@ const Instances = {
                     data-name="${i.name}" data-url="${i.url}">Instalar</button>
           </p>`).join('')
       : '<p style="color:#666">Nenhuma instância pendente.</p>';
-
-    document.getElementById('install-list').addEventListener('click', async e => {
-      const btn = e.target.closest('button[data-id]');
-      if (!btn) return;
-      Log.write(`Instalando ${btn.dataset.id}...`);
-      await App.run('create_app_gui', {
-        name: btn.dataset.name, url: btn.dataset.url, icon: '',
-      });
-    }, { once: true });
   },
 
   async renderUninstall() {
@@ -438,18 +447,6 @@ const Instances = {
         <button class="btn btn-danger btn-sm" data-id="${i.app_id}"
                 style="margin-top:6px">Desinstalar</button>
       </p>`).join('');
-
-    document.getElementById('uninstall-list').addEventListener('click', async e => {
-      const btn = e.target.closest('button[data-id]');
-      if (!btn) return;
-      const id = btn.dataset.id;
-      Log.write(`Desinstalando ${id}...`);
-      await App.run('uninstall_app_gui', {
-        appId:     id,
-        cleanData: document.getElementById(`clean_${id}`).checked,
-        delFolder: document.getElementById(`del_${id}`).checked,
-      });
-    }, { once: true });
   },
 
   async renderList() {
@@ -468,13 +465,6 @@ const Instances = {
       <p>${i.app_id}
         <button class="btn btn-sm" data-id="${i.app_id}">Limpar</button>
       </p>`).join('');
-
-    document.getElementById('cache-list').addEventListener('click', async e => {
-      const btn = e.target.closest('button[data-id]');
-      if (!btn) return;
-      Log.write(`Limpando cache de ${btn.dataset.id}...`);
-      await App.run('clear_cache_gui', { appId: btn.dataset.id });
-    }, { once: true });
   },
 };
 
@@ -504,6 +494,68 @@ document.addEventListener('DOMContentLoaded', async () => {
     await App.run('purge_all_gui');
   });
   document.getElementById('btn-clear-log').addEventListener('click', () => Log.clear());
+
+  // Event listeners para as listas usando delegação de evento persistente
+  document.getElementById('install-list').addEventListener('click', async e => {
+    const btn = e.target.closest('button[data-id]');
+    if (!btn) return;
+    Log.write(`Instalando ${btn.dataset.id} no sistema...`);
+    await App.run('install_app_gui', {
+      appId: btn.dataset.id
+    });
+    setTimeout(() => {
+      Instances.renderInstall();
+      Instances.renderList();
+    }, 1000);
+  });
+
+  document.getElementById('uninstall-list').addEventListener('click', async e => {
+    const btn = e.target.closest('button[data-id]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    Log.write(`Desinstalando ${id}...`);
+    await App.run('uninstall_app_gui', {
+      appId:     id,
+      cleanData: document.getElementById(`clean_${id}`).checked,
+      delFolder: document.getElementById(`del_${id}`).checked,
+    });
+    setTimeout(() => {
+      Instances.renderUninstall();
+      Instances.renderList();
+    }, 1000);
+  });
+
+  document.getElementById('cache-list').addEventListener('click', async e => {
+    const btn = e.target.closest('button[data-id]');
+    if (!btn) return;
+    Log.write(`Limpando cache de ${btn.dataset.id}...`);
+    await App.run('clear_cache_gui', { appId: btn.dataset.id });
+    setTimeout(() => Instances.renderCache(), 1000);
+  });
+
+  document.getElementById('c-icon').addEventListener('change', async e => {
+    const name = e.target.value;
+    const preview = document.getElementById('c-icon-preview');
+    preview.innerHTML = '';
+    if (!name) {
+      preview.style.background = '#13132b';
+      return;
+    }
+    try {
+      const b64 = await invoke('get_icon_base64', { name });
+      if (b64) {
+        const src = b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
+        const img = document.createElement('img');
+        img.src = src;
+        img.style.width = '24px';
+        img.style.height = '24px';
+        img.style.objectFit = 'contain';
+        preview.replaceChildren(img);
+      }
+    } catch {
+      preview.style.background = '#13132b';
+    }
+  });
 
   // Verificação inicial do script
   Log.write('Iniciando Claw Launcher...');

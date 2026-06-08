@@ -1039,6 +1039,18 @@ _build_silent() {
     chmod +x "$LAUNCHER_BIN"
     success "Instalado em ${LAUNCHER_BIN}"
     _install_claw_icon
+
+    local install_share="${REAL_HOME}/.local/share/claw-launcher"
+    if [ -d "$install_share" ]; then
+        step "Sincronizando recursos em ${install_share}..."
+        cp "${SCRIPT_DIR}/create_app.sh" "${install_share}/create_app.sh"
+        chmod 755 "${install_share}/create_app.sh"
+        if [ -f "${SCRIPT_DIR}/setup-deps.sh" ]; then
+            cp "${SCRIPT_DIR}/setup-deps.sh" "${install_share}/setup-deps.sh"
+            chmod 755 "${install_share}/setup-deps.sh"
+        fi
+        success "Recursos em ${install_share} sincronizados com sucesso."
+    fi
 }
 
 _install_claw_icon() {
